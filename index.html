@@ -709,6 +709,30 @@
       box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     }
 
+    .split-method-btn {
+      flex: 1;
+      padding: 10px 12px;
+      background: #f3f4f6;
+      color: #6b7280;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+
+    .split-method-btn:hover {
+      background: #e5e7eb;
+      border-color: #d1d5db;
+    }
+
+    .split-method-btn.active {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border-color: #10b981;
+    }
+
     .quick-btn:active {
       transform: translateY(0);
     }
@@ -1206,18 +1230,42 @@
         </div>
       </div>
 
-      <div class="form-group hidden" id="customSplit">
+      <div class="form-group hidden" id="splitMethodGroup">
+        <label>分帳方式</label>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+          <button type="button" id="autoSplitBtn" class="split-method-btn active" onclick="setSplitMethod('auto')">自動均分</button>
+          <button type="button" id="amountSplitBtn" class="split-method-btn" onclick="setSplitMethod('amount')">金額分帳</button>
+          <button type="button" id="ratioSplitBtn" class="split-method-btn" onclick="setSplitMethod('ratio')">比例分帳</button>
+        </div>
+      </div>
+
+      <div class="form-group hidden" id="amountSplitGroup">
         <label>自訂分帳金額</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
-            <input type="number" id="yourPart" placeholder="你的部分" onchange="updatePaymentMethod()">
+            <input type="number" id="yourPartAmount" placeholder="你的部分" onchange="updatePaymentMethod()">
           </div>
           <div>
-            <input type="number" id="partnerPart" placeholder="對方的部分" onchange="updatePaymentMethod()">
+            <input type="number" id="partnerPartAmount" placeholder="對方的部分" onchange="updatePaymentMethod()">
           </div>
         </div>
         <div style="margin-top: 8px; font-size: 0.85em; color: #666;">
-          提示：如需自訂金額，請勾選對應的成員並填入金額
+          提示：總和必須等於上方金額
+        </div>
+      </div>
+
+      <div class="form-group hidden" id="ratioSplitGroup">
+        <label>自訂分帳比例</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <input type="number" id="yourPartRatio" placeholder="你的比例 %" min="0" max="100" onchange="updatePaymentMethod()">
+          </div>
+          <div>
+            <input type="number" id="partnerPartRatio" placeholder="對方的比例 %" min="0" max="100" onchange="updatePaymentMethod()">
+          </div>
+        </div>
+        <div style="margin-top: 8px; font-size: 0.85em; color: #666;">
+          提示：總和必須等於 100%
         </div>
       </div>
 
@@ -2462,43 +2510,73 @@
 
       let yourPart = 0, partnerPart = 0, displayPayer = '';
 
-      // 檢查是否有自訂金額
-      const yourPartInput = parseFloat(document.getElementById('yourPart').value) || 0;
-      const partnerPartInput = parseFloat(document.getElementById('partnerPart').value) || 0;
-      const hasCustomAmount = (yourPartInput > 0 || partnerPartInput > 0);
+      // 判斷當前使用的分帳方式
+      const autoSplitActive = document.getElementById('autoSplitBtn').classList.contains('active');
+      const amountSplitActive = document.getElementById('amountSplitBtn').classList.contains('active');
+      const ratioSplitActive = document.getElementById('ratioSplitBtn').classList.contains('active');
 
-      if (hasCustomAmount) {
-        // 使用自訂金額
-        if (payForYou && yourPartInput <= 0) {
-          showToast('請填入「你的部分」金額', 'error');
-          return;
-        }
-        if (payForPartner && partnerPartInput <= 0) {
-          showToast('請填入「對方的部分」金額', 'error');
-          return;
-        }
+      if (payForYou && payForPartner) {
+        // 兩個都勾選：使用選定的分帳方式
+        if (amountSplitActive) {
+          // 金額分帳
+          const yourPartAmount = parseFloat(document.getElementById('yourPartAmount').value) || 0;
+          const partnerPartAmount = parseFloat(document.getElementById('partnerPartAmount').value) || 0;
 
-        yourPart = payForYou ? yourPartInput : 0;
-        partnerPart = payForPartner ? partnerPartInput : 0;
+          if (yourPartAmount <= 0 || partnerPartAmount <= 0) {
+            showToast('請填入兩人的分帳金額', 'error');
+            return;
+          }
 
-        if (Math.abs(yourPart + partnerPart - amount) > 0.01) {
-          showToast('自訂分帳金額總和必須等於總金額', 'error');
-          return;
+          if (Math.abs(yourPartAmount + partnerPartAmount - amount) > 0.01) {
+            showToast('分帳金額總和必須等於總金額 $' + amount, 'error');
+            return;
+          }
+
+          yourPart = yourPartAmount;
+          partnerPart = partnerPartAmount;
+
+        } else if (ratioSplitActive) {
+          // 比例分帳
+          const yourPartRatio = parseFloat(document.getElementById('yourPartRatio').value) || 0;
+          const partnerPartRatio = parseFloat(document.getElementById('partnerPartRatio').value) || 0;
+
+          if (yourPartRatio <= 0 || partnerPartRatio <= 0) {
+            showToast('請填入兩人的分帳比例', 'error');
+            return;
+          }
+
+          if (Math.abs(yourPartRatio + partnerPartRatio - 100) > 0.01) {
+            showToast('分帳比例總和必須等於 100%', 'error');
+            return;
+          }
+
+          yourPart = Math.round(amount * yourPartRatio / 100 * 100) / 100;
+          partnerPart = Math.round(amount * partnerPartRatio / 100 * 100) / 100;
+
+          // 修正浮點數誤差
+          const diff = amount - (yourPart + partnerPart);
+          if (Math.abs(diff) > 0) {
+            yourPart += diff;
+          }
+
+        } else {
+          // 自動均分（預設）
+          yourPart = partnerPart = Math.round(amount / 2 * 100) / 100;
+
+          // 修正浮點數誤差（如果有奇數分）
+          const diff = amount - (yourPart + partnerPart);
+          if (Math.abs(diff) > 0) {
+            yourPart += diff;
+          }
         }
-      } else {
-        // 自動平分
-        if (payForYou && payForPartner) {
-          // 兩個都勾 → 平分
-          yourPart = partnerPart = amount / 2;
-        } else if (payForYou) {
-          // 只勾「我」→ 我全額
-          yourPart = amount;
-          partnerPart = 0;
-        } else if (payForPartner) {
-          // 只勾「對方」→ 對方全額
-          yourPart = 0;
-          partnerPart = amount;
-        }
+      } else if (payForYou) {
+        // 只勾「我」→ 我全額
+        yourPart = amount;
+        partnerPart = 0;
+      } else if (payForPartner) {
+        // 只勾「對方」→ 對方全額
+        yourPart = 0;
+        partnerPart = amount;
       }
 
       // 設定 displayPayer
@@ -2567,9 +2645,7 @@
       const customPayerField = document.getElementById('customPayerField');
       const payForYou = document.getElementById('payForYou').checked;
       const payForPartner = document.getElementById('payForPartner').checked;
-      const customSplit = document.getElementById('customSplit');
-      const yourPartInput = document.getElementById('yourPart');
-      const partnerPartInput = document.getElementById('partnerPart');
+      const splitMethodGroup = document.getElementById('splitMethodGroup');
 
       // 顯示/隱藏自訂付款人欄位
       if (actualPayerSelect === 'custom') {
@@ -2578,23 +2654,54 @@
         customPayerField.classList.add('hidden');
       }
 
-      // 檢查是否需要顯示自訂金額欄位
-      // 條件：兩個都勾選 + 有填入自訂金額
-      const hasCustomAmount = (yourPartInput.value || partnerPartInput.value);
-
-      if (payForYou && payForPartner && hasCustomAmount) {
-        customSplit.classList.remove('hidden');
-      } else if (payForYou && payForPartner) {
-        // 兩個都勾但沒填金額，隱藏但允許點擊顯示
-        customSplit.classList.remove('hidden');
+      // 顯示/隱藏分帳方式選擇（當勾選多個成員時）
+      if ((payForYou && payForPartner) || (payForYou || payForPartner)) {
+        // 只要有勾選成員就顯示分帳方式
+        if (payForYou && payForPartner) {
+          splitMethodGroup.classList.remove('hidden');
+        } else {
+          // 只勾選一個人時，隱藏分帳方式（預設全額）
+          splitMethodGroup.classList.add('hidden');
+          document.getElementById('amountSplitGroup').classList.add('hidden');
+          document.getElementById('ratioSplitGroup').classList.add('hidden');
+        }
       } else {
-        customSplit.classList.add('hidden');
+        splitMethodGroup.classList.add('hidden');
       }
 
       // 至少要勾選一個
       if (!payForYou && !payForPartner) {
         showToast('請至少勾選一個成員', 'error');
         document.getElementById('payForYou').checked = true;
+        updatePaymentMethod(); // 重新觸發
+      }
+    }
+
+    function setSplitMethod(method) {
+      const amountSplitGroup = document.getElementById('amountSplitGroup');
+      const ratioSplitGroup = document.getElementById('ratioSplitGroup');
+      const autoBtn = document.getElementById('autoSplitBtn');
+      const amountBtn = document.getElementById('amountSplitBtn');
+      const ratioBtn = document.getElementById('ratioSplitBtn');
+
+      // 更新按鈕狀態
+      autoBtn.classList.remove('active');
+      amountBtn.classList.remove('active');
+      ratioBtn.classList.remove('active');
+
+      // 隱藏所有輸入欄位
+      amountSplitGroup.classList.add('hidden');
+      ratioSplitGroup.classList.add('hidden');
+
+      // 根據選擇顯示對應欄位
+      if (method === 'auto') {
+        autoBtn.classList.add('active');
+      } else if (method === 'amount') {
+        amountBtn.classList.add('active');
+        amountSplitGroup.classList.remove('hidden');
+      } else if (method === 'ratio') {
+        ratioBtn.classList.add('active');
+        ratioSplitGroup.classList.remove('hidden');
       }
     }
 
