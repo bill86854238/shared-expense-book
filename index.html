@@ -757,6 +757,78 @@
     </div>
     <div class="subtitle">讓錢的事變簡單</div>
 
+    <!-- 新增支出表單 - 移到最上方方便快速記帳 -->
+    <div class="form-section">
+      <h2 style="margin-bottom: 15px;">💰 新增支出</h2>
+
+      <!-- 快速記账按钮 -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 0.9em; color: #666; margin-bottom: 8px; font-weight: 500;">⚡ 快速記帳</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <button class="quick-btn" onclick="quickExpense('早餐', 50, '飲食')">🍳 早餐 $50</button>
+          <button class="quick-btn" onclick="quickExpense('午餐', 100, '飲食')">🍱 午餐 $100</button>
+          <button class="quick-btn" onclick="quickExpense('晚餐', 150, '飲食')">🍽️ 晚餐 $150</button>
+          <button class="quick-btn" onclick="quickExpense('咖啡', 60, '飲食')">☕ 咖啡 $60</button>
+          <button class="quick-btn" onclick="quickExpense('交通', 20, '交通')">🚇 交通 $20</button>
+          <button class="quick-btn" onclick="quickExpense('停車', 50, '交通')">🅿️ 停車 $50</button>
+          <button class="quick-btn" onclick="quickExpense('點心', 80, '飲食')">🍰 點心 $80</button>
+          <button class="quick-btn" onclick="quickExpense('飲料', 50, '飲食')">🧋 飲料 $50</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>項目</label>
+        <input type="text" id="item" placeholder="例如：買菜、外食">
+      </div>
+
+      <div class="form-group">
+        <label>金額</label>
+        <input type="number" id="amount" placeholder="0">
+      </div>
+
+      <div class="form-group">
+        <label>付款方式</label>
+        <select id="splitType" onchange="updatePayerOptions()">
+          <option value="single">單人付款</option>
+          <option value="equal">平分</option>
+          <option value="custom">自訂分帳</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="payerGroup">
+        <label>誰付的</label>
+        <select id="payer">
+          <option value="你">你</option>
+          <option value="對方">對方</option>
+        </select>
+      </div>
+
+      <div class="form-group hidden" id="customSplit">
+        <label>自訂分帳金額</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <input type="number" id="yourPart" placeholder="你的部分">
+          </div>
+          <div>
+            <input type="number" id="partnerPart" placeholder="對方的部分">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>分類</label>
+        <select id="category">
+          <option value="飲食">🍜 飲食</option>
+          <option value="居住">🏠 居住</option>
+          <option value="交通">🚗 交通</option>
+          <option value="娛樂">🎮 娛樂</option>
+          <option value="其他">📦 其他</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary" onclick="addExpense()">新增支出</button>
+    </div>
+
     <div class="stats" id="stats">
       <div class="stat-card you">
         <div class="stat-icon">👤</div>
@@ -852,72 +924,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="form-section">
-      <h2 style="margin-bottom: 15px;">新增支出</h2>
-
-      <!-- 快速記账按钮 -->
-      <div style="margin-bottom: 20px;">
-        <div style="font-size: 0.9em; color: #666; margin-bottom: 8px; font-weight: 500;">⚡ 快速記帳</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-          <button class="quick-btn" onclick="quickExpense('早餐', 50, '飲食')">🍳 早餐 $50</button>
-          <button class="quick-btn" onclick="quickExpense('午餐', 100, '飲食')">🍱 午餐 $100</button>
-          <button class="quick-btn" onclick="quickExpense('晚餐', 150, '飲食')">🍽️ 晚餐 $150</button>
-          <button class="quick-btn" onclick="quickExpense('咖啡', 60, '飲食')">☕ 咖啡 $60</button>
-          <button class="quick-btn" onclick="quickExpense('交通', 20, '交通')">🚇 交通 $20</button>
-          <button class="quick-btn" onclick="quickExpense('停車', 50, '交通')">🅿️ 停車 $50</button>
-          <button class="quick-btn" onclick="quickExpense('點心', 80, '飲食')">🍰 點心 $80</button>
-          <button class="quick-btn" onclick="quickExpense('飲料', 50, '飲食')">🧋 飲料 $50</button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>項目</label>
-        <input type="text" id="item" placeholder="例如：買菜、外食">
-      </div>
-
-      <div class="form-group">
-        <label>金額</label>
-        <input type="number" id="amount" placeholder="0">
-      </div>
-
-      <div class="form-group">
-        <label>付款方式</label>
-        <select id="splitType" onchange="updatePayerOptions()">
-          <option value="single">單人付款</option>
-          <option value="equal">平分</option>
-          <option value="custom">自訂分帳</option>
-        </select>
-      </div>
-
-      <div class="form-group" id="payerGroup">
-        <label>誰付的</label>
-        <select id="payer">
-          <option value="你">你</option>
-          <option value="對方">對方</option>
-        </select>
-      </div>
-
-      <div class="form-group hidden" id="customSplit">
-        <label>你付</label>
-        <input type="number" id="yourPart" placeholder="0">
-        <label style="margin-top: 10px;">對方付</label>
-        <input type="number" id="partnerPart" placeholder="0">
-      </div>
-
-      <div class="form-group">
-        <label>分類</label>
-        <select id="category">
-          <option>飲食</option>
-          <option>居住</option>
-          <option>交通</option>
-          <option>娛樂</option>
-          <option>其他</option>
-        </select>
-      </div>
-
-      <button class="btn btn-primary" onclick="addExpense()">新增支出</button>
     </div>
 
     <div class="filter-section">
