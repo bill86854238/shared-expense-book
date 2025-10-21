@@ -39,7 +39,7 @@ function createExpensesSheet(ss) {
     sheet.clear();
   }
 
-  const headers = ['日期', '項目', '金額', '付款人', '你的部分', '對方的部分', '分類', '是否週期', '週期日期', 'ID'];
+  const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '分類', '是否週期', '週期日期', 'ID'];
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
   sheet.getRange(1, 1, 1, headers.length)
@@ -117,7 +117,7 @@ function createSettingsSheet(ss) {
 
 // ==================== 核心功能 ====================
 
-function addExpense(item, amount, payer, yourPart, partnerPart, category, isRecurring, recurringDay) {
+function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay) {
   // 檢查頻率限制
   checkRateLimit('addExpense');
 
@@ -156,6 +156,7 @@ function addExpense(item, amount, payer, yourPart, partnerPart, category, isRecu
     safeItem,
     amount,
     payer,
+    actualPayer || payer,  // 實際付款人，向下相容
     yourPart,
     partnerPart,
     safeCategory,
@@ -167,13 +168,13 @@ function addExpense(item, amount, payer, yourPart, partnerPart, category, isRecu
   sheet.appendRow(row);
 
   const lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow, 1, 1, 10).setHorizontalAlignment('center');
+  sheet.getRange(lastRow, 1, 1, 11).setHorizontalAlignment('center');
 
   let color = CONFIG.COLORS.BOTH;
   if (payer === '你') color = CONFIG.COLORS.YOUR;
   else if (payer === '對方') color = CONFIG.COLORS.PARTNER;
 
-  sheet.getRange(lastRow, 1, 1, 10).setBackground(color);
+  sheet.getRange(lastRow, 1, 1, 11).setBackground(color);
 
   // 記錄日誌
   logAction('新增支出', `項目: ${safeItem}, 金額: ${amount}, 付款人: ${payer}`);
@@ -211,7 +212,7 @@ function getStatistics(startDate, endDate) {
   const categoryStats = {};
 
   for (let i = 1; i < data.length; i++) {
-    const [date, item, amount, payer, yourPart, partnerPart, category] = data[i];
+    const [date, item, amount, payer, actualPayer, yourPart, partnerPart, category] = data[i];
 
     if (startDate && new Date(date) < new Date(startDate)) continue;
     if (endDate && new Date(date) > new Date(endDate)) continue;
@@ -425,12 +426,13 @@ function getExpenses(filters) {
       item: String(data[i][1] || ''),
       amount: Number(data[i][2]) || 0,
       payer: String(data[i][3] || ''),
-      yourPart: Number(data[i][4]) || 0,
-      partnerPart: Number(data[i][5]) || 0,
-      category: String(data[i][6] || '其他'),
-      isRecurring: Boolean(data[i][7]),
-      recurringDay: data[i][8] || '',
-      id: String(data[i][9] || '')
+      actualPayer: String(data[i][4] || data[i][3] || ''),  // 新增：實際付款人，向下相容
+      yourPart: Number(data[i][5]) || 0,
+      partnerPart: Number(data[i][6]) || 0,
+      category: String(data[i][7] || '其他'),
+      isRecurring: Boolean(data[i][8]),
+      recurringDay: data[i][9] || '',
+      id: String(data[i][10] || '')
     });
   }
 
@@ -443,6 +445,7 @@ function addExpenseFromWeb(expenseData) {
     expenseData.item,
     expenseData.amount,
     expenseData.payer,
+    expenseData.actualPayer || expenseData.payer,  // 新增：實際付款人，向下相容
     expenseData.yourPart,
     expenseData.partnerPart,
     expenseData.category,

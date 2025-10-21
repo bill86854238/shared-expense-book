@@ -1180,10 +1180,16 @@
       <div class="form-group">
         <label>付款方式</label>
         <select id="paymentMethod" onchange="updatePaymentMethod()">
-          <option value="you">我付（你全付）</option>
-          <option value="partner">對方付（對方全付）</option>
-          <option value="split">AA制（兩人平分）</option>
-          <option value="custom">自訂金額</option>
+          <option value="you">我付（我負擔，我掏錢）</option>
+          <option value="partner">對方付（對方負擔，對方掏錢）</option>
+          <option value="help-me">幫我付（我負擔，對方掏錢）</option>
+          <option value="help-partner">幫對方付（對方負擔，我掏錢）</option>
+          <option value="split-you">平分 - 我先付（各 50%，我先掏錢）</option>
+          <option value="split-partner">平分 - 對方先付（各 50%，對方先掏錢）</option>
+          <option value="split-each">平分 - 各付各的（各 50%，各自掏錢）</option>
+          <option value="custom-you">自訂 - 我先付（自訂比例，我先掏錢）</option>
+          <option value="custom-partner">自訂 - 對方先付（自訂比例，對方先掏錢）</option>
+          <option value="custom-each">自訂 - 各付各的（自訂比例，各自掏錢）</option>
         </select>
       </div>
 
@@ -2408,18 +2414,50 @@
         return;
       }
 
-      let yourPart = 0, partnerPart = 0, displayPayer = '';
+      let yourPart = 0, partnerPart = 0, displayPayer = '', actualPayer = '';
 
+      // 處理新的付款方式
       if (paymentMethod === 'you') {
+        // 我付（我負擔，我掏錢）
         yourPart = amount;
+        partnerPart = 0;
         displayPayer = '你';
+        actualPayer = '你';
       } else if (paymentMethod === 'partner') {
+        // 對方付（對方負擔，對方掏錢）
+        yourPart = 0;
         partnerPart = amount;
         displayPayer = '對方';
-      } else if (paymentMethod === 'split') {
+        actualPayer = '對方';
+      } else if (paymentMethod === 'help-me') {
+        // 幫我付（我負擔，對方掏錢）
+        yourPart = amount;
+        partnerPart = 0;
+        displayPayer = '你';
+        actualPayer = '對方';
+      } else if (paymentMethod === 'help-partner') {
+        // 幫對方付（對方負擔，我掏錢）
+        yourPart = 0;
+        partnerPart = amount;
+        displayPayer = '對方';
+        actualPayer = '你';
+      } else if (paymentMethod === 'split-you') {
+        // 平分 - 我先付
         yourPart = partnerPart = amount / 2;
         displayPayer = '兩人';
-      } else if (paymentMethod === 'custom') {
+        actualPayer = '你';
+      } else if (paymentMethod === 'split-partner') {
+        // 平分 - 對方先付
+        yourPart = partnerPart = amount / 2;
+        displayPayer = '兩人';
+        actualPayer = '對方';
+      } else if (paymentMethod === 'split-each') {
+        // 平分 - 各付各的
+        yourPart = partnerPart = amount / 2;
+        displayPayer = '兩人';
+        actualPayer = '各自';
+      } else if (paymentMethod.startsWith('custom-')) {
+        // 自訂金額
         yourPart = parseFloat(document.getElementById('yourPart').value) || 0;
         partnerPart = parseFloat(document.getElementById('partnerPart').value) || 0;
         if (Math.abs(yourPart + partnerPart - amount) > 0.01) {
@@ -2427,6 +2465,14 @@
           return;
         }
         displayPayer = '兩人';
+
+        if (paymentMethod === 'custom-you') {
+          actualPayer = '你';
+        } else if (paymentMethod === 'custom-partner') {
+          actualPayer = '對方';
+        } else if (paymentMethod === 'custom-each') {
+          actualPayer = '各自';
+        }
       }
 
       // 週期支出設定
@@ -2443,6 +2489,7 @@
         item: item,
         amount: amount,
         payer: displayPayer,
+        actualPayer: actualPayer,  // 新增：誰先付錢
         yourPart: yourPart,
         partnerPart: partnerPart,
         category: category,
@@ -2484,7 +2531,8 @@
       const paymentMethod = document.getElementById('paymentMethod').value;
       const customSplit = document.getElementById('customSplit');
 
-      if (paymentMethod === 'custom') {
+      // 只有選擇「自訂」開頭的選項才顯示自訂金額欄位
+      if (paymentMethod.startsWith('custom-')) {
         customSplit.classList.remove('hidden');
       } else {
         customSplit.classList.add('hidden');
