@@ -382,24 +382,54 @@ function getExpenses(filters) {
   }
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+  // 檢查工作表是否存在
+  if (!sheet) {
+    Logger.log('支出記錄工作表不存在');
+    return [];
+  }
+
   const data = sheet.getDataRange().getValues();
+
+  // 如果只有標題列，返回空陣列
+  if (data.length <= 1) {
+    Logger.log('沒有支出記錄');
+    return [];
+  }
 
   const expenses = [];
   for (let i = 1; i < data.length; i++) {
+    // 跳過空白列
+    if (!data[i][1]) {
+      continue;
+    }
+
+    // 格式化日期（處理 Date 物件或字串）
+    let dateStr = data[i][0];
+    if (dateStr instanceof Date) {
+      dateStr = Utilities.formatDate(dateStr, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    } else if (typeof dateStr === 'string') {
+      // 已經是字串，保持原樣
+    } else {
+      // 其他情況，使用當前日期
+      dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    }
+
     expenses.push({
-      date: data[i][0],
-      item: data[i][1],
-      amount: data[i][2],
-      payer: data[i][3],
-      yourPart: data[i][4],
-      partnerPart: data[i][5],
-      category: data[i][6],
-      isRecurring: data[i][7],
-      recurringDay: data[i][8],
-      id: data[i][9]
+      date: dateStr,
+      item: String(data[i][1] || ''),
+      amount: Number(data[i][2]) || 0,
+      payer: String(data[i][3] || ''),
+      yourPart: Number(data[i][4]) || 0,
+      partnerPart: Number(data[i][5]) || 0,
+      category: String(data[i][6] || '其他'),
+      isRecurring: Boolean(data[i][7]),
+      recurringDay: data[i][8] || '',
+      id: String(data[i][9] || '')
     });
   }
 
+  Logger.log('成功載入 ' + expenses.length + ' 筆支出記錄');
   return expenses;
 }
 
