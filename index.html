@@ -958,6 +958,28 @@
         padding: 10px 12px;
         min-height: 44px;
       }
+
+      /* 日期範圍篩選 - 手機版垂直佈局 */
+      .date-filter-section {
+        flex-direction: column !important;
+        align-items: stretch !important;
+      }
+
+      .date-filter-section > div {
+        width: 100% !important;
+        min-width: auto !important;
+      }
+
+      .date-filter-section input[type="date"] {
+        min-width: auto !important;
+        font-size: 14px;
+        padding: 12px;
+      }
+
+      .date-filter-section button {
+        flex: 1;
+        font-size: 0.95em;
+      }
     }
 
     /* 極小螢幕 - 400px 以下 */
@@ -994,27 +1016,7 @@
   </style>
 </head>
 <body>
-  <!-- 視窗寬度診斷工具 -->
-  <div id="debugInfo" style="position: fixed; top: 0; left: 0; right: 0; background: #ff0000; color: white; padding: 10px; text-align: center; font-size: 14px; z-index: 99999; font-family: monospace;">
-    螢幕: <span id="screenWidth"></span>px | 視窗: <span id="windowWidth"></span>px | Container: <span id="containerWidth"></span>px
-  </div>
-  <script>
-    function updateDebugInfo() {
-      document.getElementById('screenWidth').textContent = window.screen.width;
-      document.getElementById('windowWidth').textContent = window.innerWidth;
-      var container = document.querySelector('.container');
-      if (container) {
-        document.getElementById('containerWidth').textContent = container.offsetWidth;
-      }
-    }
-    window.addEventListener('load', updateDebugInfo);
-    window.addEventListener('resize', updateDebugInfo);
-    setTimeout(updateDebugInfo, 100);
-    setTimeout(updateDebugInfo, 500);
-    setTimeout(updateDebugInfo, 1000);
-  </script>
-
-  <div class="container" style="margin-top: 50px;">
+  <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h1 style="margin: 0;">💑 共同記帳</h1>
       <div id="userInfo" style="display: flex; align-items: center; gap: 12px;">
@@ -1219,13 +1221,17 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
-        <label style="margin: 0; white-space: nowrap;">日期範圍：</label>
-        <input type="date" id="startDate" style="flex: 1;">
-        <span>～</span>
-        <input type="date" id="endDate" style="flex: 1;">
-        <button onclick="applyFilters()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;">篩選</button>
-        <button onclick="clearFilters()" style="padding: 10px 20px; background: #e5e7eb; color: #333; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;">清除</button>
+      <div class="date-filter-section" style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;">
+        <label style="margin: 0; white-space: nowrap; width: 100%;">📅 日期範圍：</label>
+        <div style="display: flex; gap: 8px; align-items: center; flex: 1; min-width: 200px;">
+          <input type="date" id="startDate" style="flex: 1; min-width: 120px;">
+          <span>～</span>
+          <input type="date" id="endDate" style="flex: 1; min-width: 120px;">
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button onclick="applyFilters()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;">篩選</button>
+          <button onclick="clearFilters()" style="padding: 10px 20px; background: #e5e7eb; color: #333; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;">清除</button>
+        </div>
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
