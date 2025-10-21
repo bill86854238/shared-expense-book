@@ -1,0 +1,21 @@
+# Git 相關
+.git/**
+.gitignore
+README.md
+LICENSE
+FAQ.md
+*.md
+
+# Node modules
+node_modules/**
+
+# 文檔
+最終*.md
+完整*.md
+成員*.md
+多幣*.md
+新功*.md
+UI*.md
+
+# 避免重複的 code.js
+code.js
