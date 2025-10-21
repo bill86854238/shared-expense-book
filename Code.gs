@@ -21,98 +21,122 @@ const CONFIG = {
 // ==================== 初始化函數 ====================
 
 function initializeSpreadsheet() {
+  const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
+  // 檢查是否已有支出記錄工作表
+  const expensesSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+  if (expensesSheet) {
+    const dataCount = expensesSheet.getLastRow() - 1; // 扣掉標題列
+
+    if (dataCount > 0) {
+      // 已有資料，拒絕初始化
+      ui.alert(
+        '⚠️ 系統已存在資料',
+        `目前有 ${dataCount} 筆支出記錄。\n\n` +
+        '初始化功能僅供「首次使用」！\n\n' +
+        '如果要升級資料結構（新增欄位），請使用：\n' +
+        '📊 記帳系統 → 🔄 升級資料結構\n\n' +
+        '如果要清空重置，請使用：\n' +
+        '📊 記帳系統 → ⚠️ 重置系統（危險）',
+        ui.ButtonSet.OK
+      );
+      return;
+    }
+  }
+
+  // 首次初始化
   createExpensesSheet(ss);
   createRecurringSheet(ss);
   createSettingsSheet(ss);
   setupTriggers();
 
-  SpreadsheetApp.getUi().alert('✅ 初始化完成！\n\n已建立：\n1. 支出記錄\n2. 週期設定\n3. 設定\n\n並設定每日自動執行週期事件。');
+  ui.alert('✅ 初始化完成！\n\n已建立：\n1. 支出記錄\n2. 週期設定\n3. 設定\n\n並設定每日自動執行週期事件。');
 }
 
 function createExpensesSheet(ss) {
   let sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
   if (!sheet) {
+    // 只有不存在時才建立新的
     sheet = ss.insertSheet(CONFIG.SHEET_NAMES.EXPENSES);
-  } else {
-    sheet.clear();
+
+    const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '分類', '是否週期', '週期日期', 'ID'];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+    sheet.getRange(1, 1, 1, headers.length)
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+
+    const widths = [100, 150, 100, 100, 100, 100, 100, 80, 80, 80, 120];
+    widths.forEach((width, i) => sheet.setColumnWidth(i + 1, width));
+
+    sheet.setFrozenRows(1);
   }
-
-  const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '分類', '是否週期', '週期日期', 'ID'];
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-
-  sheet.getRange(1, 1, 1, headers.length)
-    .setBackground(CONFIG.COLORS.HEADER)
-    .setFontColor('#ffffff')
-    .setFontWeight('bold')
-    .setHorizontalAlignment('center');
-
-  const widths = [100, 150, 100, 100, 100, 100, 100, 80, 80, 120];
-  widths.forEach((width, i) => sheet.setColumnWidth(i + 1, width));
-
-  sheet.setFrozenRows(1);
+  // 如果已存在，不做任何事（保護資料）
 }
 
 function createRecurringSheet(ss) {
   let sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.RECURRING);
   if (!sheet) {
+    // 只有不存在時才建立新的
     sheet = ss.insertSheet(CONFIG.SHEET_NAMES.RECURRING);
-  } else {
-    sheet.clear();
+
+    const headers = ['啟用', '項目', '金額', '付款人', '你的部分', '對方的部分', '分類', '每月執行日', '備註'];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+    sheet.getRange(1, 1, 1, headers.length)
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+
+    sheet.setFrozenRows(1);
+
+    const examples = [
+      [true, '房租', 15000, '你', 15000, 0, '居住', 1, '每月 1 號自動扣款'],
+      [true, '水電費', 2000, '兩人', 800, 1200, '居住', 10, '你付 800，對方付 1200'],
+      [false, '網路費', 599, '你', 599, 0, '居住', 5, '已停用範例']
+    ];
+
+    sheet.getRange(2, 1, examples.length, examples[0].length).setValues(examples);
   }
-
-  const headers = ['啟用', '項目', '金額', '付款人', '你的部分', '對方的部分', '分類', '每月執行日', '備註'];
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-
-  sheet.getRange(1, 1, 1, headers.length)
-    .setBackground(CONFIG.COLORS.HEADER)
-    .setFontColor('#ffffff')
-    .setFontWeight('bold')
-    .setHorizontalAlignment('center');
-
-  sheet.setFrozenRows(1);
-
-  const examples = [
-    [true, '房租', 15000, '你', 15000, 0, '居住', 1, '每月 1 號自動扣款'],
-    [true, '水電費', 2000, '兩人', 800, 1200, '居住', 10, '你付 800，對方付 1200'],
-    [false, '網路費', 599, '你', 599, 0, '居住', 5, '已停用範例']
-  ];
-
-  sheet.getRange(2, 1, examples.length, examples[0].length).setValues(examples);
+  // 如果已存在，不做任何事（保護資料）
 }
 
 function createSettingsSheet(ss) {
   let sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
   if (!sheet) {
+    // 只有不存在時才建立新的
     sheet = ss.insertSheet(CONFIG.SHEET_NAMES.SETTINGS);
-  } else {
-    sheet.clear();
+
+    const owner = ss.getOwner().getEmail();
+
+    const settings = [
+      ['設定項目', '值'],
+      ['你的名字', '你'],
+      ['對方的名字', '對方'],
+      ['預設分類', '飲食,居住,交通,娛樂,其他'],
+      ['週期事件最後執行日期', ''],
+      ['允許存取的使用者', owner]
+    ];
+
+    sheet.getRange(1, 1, settings.length, 2).setValues(settings);
+    sheet.getRange(1, 1, 1, 2)
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold');
+
+    sheet.setColumnWidth(1, 200);
+    sheet.setColumnWidth(2, 400);
+
+    // 加入說明
+    sheet.getRange('C6').setValue('多個使用者用逗號分隔，例如：user1@gmail.com, user2@gmail.com');
+    sheet.getRange('C6').setFontSize(9).setFontColor('#999999');
   }
-
-  const owner = ss.getOwner().getEmail();
-
-  const settings = [
-    ['設定項目', '值'],
-    ['你的名字', '你'],
-    ['對方的名字', '對方'],
-    ['預設分類', '飲食,居住,交通,娛樂,其他'],
-    ['週期事件最後執行日期', ''],
-    ['允許存取的使用者', owner]
-  ];
-
-  sheet.getRange(1, 1, settings.length, 2).setValues(settings);
-  sheet.getRange(1, 1, 1, 2)
-    .setBackground(CONFIG.COLORS.HEADER)
-    .setFontColor('#ffffff')
-    .setFontWeight('bold');
-
-  sheet.setColumnWidth(1, 200);
-  sheet.setColumnWidth(2, 400);
-
-  // 加入說明
-  sheet.getRange('C6').setValue('多個使用者用逗號分隔，例如：user1@gmail.com, user2@gmail.com');
-  sheet.getRange('C6').setFontSize(9).setFontColor('#999999');
+  // 如果已存在，不做任何事（保護資料）
 }
 
 // ==================== 核心功能 ====================
@@ -928,18 +952,182 @@ function manualExecuteRecurring() {
   SpreadsheetApp.getUi().alert('✅ 週期事件執行完成！\n\n請檢查「支出記錄」工作表。');
 }
 
+/**
+ * 升級資料結構 - 向下相容地新增欄位
+ */
+function upgradeDataStructure() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+  if (!sheet) {
+    ui.alert('❌ 錯誤', '找不到「支出記錄」工作表。\n\n請先執行「初始化系統」。', ui.ButtonSet.OK);
+    return;
+  }
+
+  // 檢查是否已有「實際付款人」欄位
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const actualPayerIndex = headers.indexOf('實際付款人');
+
+  if (actualPayerIndex !== -1) {
+    ui.alert('✅ 資料結構已是最新版本', '無需升級。', ui.ButtonSet.OK);
+    return;
+  }
+
+  // 確認升級
+  const response = ui.alert(
+    '🔄 升級資料結構',
+    '即將在「付款人」欄位後方新增「實際付款人」欄位。\n\n' +
+    '這是為了支援墊付功能（例如：我幫對方墊付）。\n\n' +
+    '升級過程不會刪除任何資料，舊資料會自動相容。\n\n' +
+    '確定要升級嗎？',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    ui.alert('✅ 已取消升級');
+    return;
+  }
+
+  // 執行升級：在第 5 欄（付款人後）插入新欄位
+  sheet.insertColumnAfter(4); // 在第 4 欄後插入
+
+  // 設定標題
+  sheet.getRange(1, 5).setValue('實際付款人');
+  sheet.getRange(1, 5)
+    .setBackground(CONFIG.COLORS.HEADER)
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
+
+  // 設定欄寬
+  sheet.setColumnWidth(5, 100);
+
+  // 自動填入舊資料：實際付款人 = 付款人
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const payerData = sheet.getRange(2, 4, lastRow - 1, 1).getValues(); // 第 4 欄是付款人
+    sheet.getRange(2, 5, lastRow - 1, 1).setValues(payerData); // 複製到第 5 欄
+  }
+
+  ui.alert('✅ 升級完成！\n\n已新增「實際付款人」欄位，\n舊資料已自動設定為與「付款人」相同。');
+}
+
+/**
+ * 重置系統 - 清空所有資料（危險操作）
+ */
+function resetSystem() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const expensesSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+  if (!expensesSheet) {
+    ui.alert('❌ 錯誤', '找不到「支出記錄」工作表。', ui.ButtonSet.OK);
+    return;
+  }
+
+  const dataCount = expensesSheet.getLastRow() - 1;
+
+  // 第一次確認
+  const response1 = ui.alert(
+    '⚠️ 警告：即將重置系統',
+    `目前有 ${dataCount} 筆支出記錄。\n\n` +
+    '重置將會「永久刪除所有資料」！\n\n' +
+    '強烈建議：\n' +
+    '1. 先使用網頁版「匯出 CSV」備份\n' +
+    '2. 或使用「檔案 → 建立副本」備份整個試算表\n\n' +
+    '確定要繼續嗎？',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response1 !== ui.Button.YES) {
+    ui.alert('✅ 已取消重置');
+    return;
+  }
+
+  // 第二次確認（最後機會）
+  const response2 = ui.alert(
+    '⚠️ 最後確認',
+    '這是最後一次確認！\n\n' +
+    `即將刪除 ${dataCount} 筆記錄，無法復原！\n\n` +
+    '真的要繼續嗎？',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response2 !== ui.Button.YES) {
+    ui.alert('✅ 已取消重置');
+    return;
+  }
+
+  // 執行重置
+  expensesSheet.clear();
+  const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '分類', '是否週期', '週期日期', 'ID'];
+  expensesSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  expensesSheet.getRange(1, 1, 1, headers.length)
+    .setBackground(CONFIG.COLORS.HEADER)
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
+
+  const widths = [100, 150, 100, 100, 100, 100, 100, 80, 80, 80, 120];
+  widths.forEach((width, i) => expensesSheet.setColumnWidth(i + 1, width));
+
+  expensesSheet.setFrozenRows(1);
+
+  // 同樣重置週期設定和設定工作表
+  const recurringSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.RECURRING);
+  if (recurringSheet) {
+    recurringSheet.clear();
+    const headers = ['啟用', '項目', '金額', '付款人', '你的部分', '對方的部分', '分類', '每月執行日', '備註'];
+    recurringSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    recurringSheet.getRange(1, 1, 1, headers.length)
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+    recurringSheet.setFrozenRows(1);
+  }
+
+  const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+  if (settingsSheet) {
+    const owner = ss.getOwner().getEmail();
+    settingsSheet.clear();
+    const settings = [
+      ['設定項目', '值'],
+      ['你的名字', '你'],
+      ['對方的名字', '對方'],
+      ['預設分類', '飲食,居住,交通,娛樂,其他'],
+      ['週期事件最後執行日期', ''],
+      ['允許存取的使用者', owner]
+    ];
+    settingsSheet.getRange(1, 1, settings.length, 2).setValues(settings);
+    settingsSheet.getRange(1, 1, 1, 2)
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold');
+    settingsSheet.setColumnWidth(1, 200);
+    settingsSheet.setColumnWidth(2, 400);
+    settingsSheet.getRange('C6').setValue('多個使用者用逗號分隔，例如：user1@gmail.com, user2@gmail.com');
+    settingsSheet.getRange('C6').setFontSize(9).setFontColor('#999999');
+  }
+
+  ui.alert('✅ 重置完成！\n\n所有資料已清空，系統已重新初始化。');
+}
+
 // ==================== 選單 ====================
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('📊 記帳系統')
-    .addItem('🚀 初始化系統', 'initializeSpreadsheet')
+    .addItem('🚀 初始化系統（僅首次）', 'initializeSpreadsheet')
+    .addItem('🔄 升級資料結構', 'upgradeDataStructure')
     .addItem('📱 開啟網頁版', 'openWebApp')
     .addSeparator()
     .addItem('🔄 手動執行週期事件', 'manualExecuteRecurring')
     .addItem('📈 查看統計資料', 'showStatistics')
     .addSeparator()
     .addItem('⚙️ 設定觸發器', 'setupTriggers')
+    .addItem('⚠️ 重置系統（危險）', 'resetSystem')
     .addToUi();
 }
 
