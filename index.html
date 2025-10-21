@@ -1178,35 +1178,40 @@
       </div>
 
       <div class="form-group">
-        <label>付款方式</label>
-        <select id="paymentMethod" onchange="updatePaymentMethod()">
-          <option value="you">我付</option>
-          <option value="partner">對方付</option>
-          <option value="help-me">幫我付</option>
-          <option value="help-partner">幫對方付</option>
-          <option value="split">平分</option>
-          <option value="custom">自訂</option>
+        <label>誰先付錢（實際付款人）</label>
+        <select id="actualPayer" onchange="updatePaymentMethod()">
+          <option value="you">我</option>
+          <option value="partner">對方</option>
+          <option value="each">各付各的</option>
         </select>
       </div>
 
-      <div class="form-group hidden" id="actualPayerGroup">
-        <label>誰先付錢</label>
-        <select id="actualPayer">
-          <option value="you">我先付</option>
-          <option value="partner">對方先付</option>
-          <option value="each">各付各的</option>
-        </select>
+      <div class="form-group">
+        <label>幫誰付款（可複選）</label>
+        <div style="display: flex; gap: 20px; align-items: center;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+            <input type="checkbox" id="payForYou" onchange="updatePaymentMethod()" checked>
+            <span>我</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+            <input type="checkbox" id="payForPartner" onchange="updatePaymentMethod()">
+            <span>對方</span>
+          </label>
+        </div>
       </div>
 
       <div class="form-group hidden" id="customSplit">
         <label>自訂分帳金額</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
-            <input type="number" id="yourPart" placeholder="你的部分">
+            <input type="number" id="yourPart" placeholder="你的部分" onchange="updatePaymentMethod()">
           </div>
           <div>
-            <input type="number" id="partnerPart" placeholder="對方的部分">
+            <input type="number" id="partnerPart" placeholder="對方的部分" onchange="updatePaymentMethod()">
           </div>
+        </div>
+        <div style="margin-top: 8px; font-size: 0.85em; color: #666;">
+          提示：如需自訂金額，請勾選對應的成員並填入金額
         </div>
       </div>
 
@@ -2405,7 +2410,6 @@
     function addExpense() {
       const item = document.getElementById('item').value.trim();
       const amount = parseFloat(document.getElementById('amount').value);
-      const paymentMethod = document.getElementById('paymentMethod').value;
       const category = document.getElementById('category').value;
 
       // 前端驗證
@@ -2419,63 +2423,75 @@
         return;
       }
 
-      let yourPart = 0, partnerPart = 0, displayPayer = '', actualPayer = '';
+      // 取得誰先付錢
+      const actualPayerValue = document.getElementById('actualPayer').value;
+      let actualPayer = '';
+      if (actualPayerValue === 'you') {
+        actualPayer = '你';
+      } else if (actualPayerValue === 'partner') {
+        actualPayer = '對方';
+      } else {
+        actualPayer = '各自';
+      }
 
-      // 處理付款方式
-      if (paymentMethod === 'you') {
-        // 我付（我負擔，我掏錢）
-        yourPart = amount;
-        partnerPart = 0;
-        displayPayer = '你';
-        actualPayer = '你';
-      } else if (paymentMethod === 'partner') {
-        // 對方付（對方負擔，對方掏錢）
-        yourPart = 0;
-        partnerPart = amount;
-        displayPayer = '對方';
-        actualPayer = '對方';
-      } else if (paymentMethod === 'help-me') {
-        // 幫我付（我負擔，對方掏錢）
-        yourPart = amount;
-        partnerPart = 0;
-        displayPayer = '你';
-        actualPayer = '對方';
-      } else if (paymentMethod === 'help-partner') {
-        // 幫對方付（對方負擔，我掏錢）
-        yourPart = 0;
-        partnerPart = amount;
-        displayPayer = '對方';
-        actualPayer = '你';
-      } else if (paymentMethod === 'split') {
-        // 平分 - 需要從第二個下拉選單取得誰先付
-        yourPart = partnerPart = amount / 2;
-        displayPayer = '兩人';
-        const actualPayerSelect = document.getElementById('actualPayer').value;
-        if (actualPayerSelect === 'you') {
-          actualPayer = '你';
-        } else if (actualPayerSelect === 'partner') {
-          actualPayer = '對方';
-        } else {
-          actualPayer = '各自';
+      // 取得幫誰付款
+      const payForYou = document.getElementById('payForYou').checked;
+      const payForPartner = document.getElementById('payForPartner').checked;
+
+      // 檢查至少要勾選一個
+      if (!payForYou && !payForPartner) {
+        showToast('請至少勾選一個成員', 'error');
+        return;
+      }
+
+      let yourPart = 0, partnerPart = 0, displayPayer = '';
+
+      // 檢查是否有自訂金額
+      const yourPartInput = parseFloat(document.getElementById('yourPart').value) || 0;
+      const partnerPartInput = parseFloat(document.getElementById('partnerPart').value) || 0;
+      const hasCustomAmount = (yourPartInput > 0 || partnerPartInput > 0);
+
+      if (hasCustomAmount) {
+        // 使用自訂金額
+        if (payForYou && yourPartInput <= 0) {
+          showToast('請填入「你的部分」金額', 'error');
+          return;
         }
-      } else if (paymentMethod === 'custom') {
-        // 自訂金額 - 需要從第二個下拉選單取得誰先付
-        yourPart = parseFloat(document.getElementById('yourPart').value) || 0;
-        partnerPart = parseFloat(document.getElementById('partnerPart').value) || 0;
+        if (payForPartner && partnerPartInput <= 0) {
+          showToast('請填入「對方的部分」金額', 'error');
+          return;
+        }
+
+        yourPart = payForYou ? yourPartInput : 0;
+        partnerPart = payForPartner ? partnerPartInput : 0;
+
         if (Math.abs(yourPart + partnerPart - amount) > 0.01) {
           showToast('自訂分帳金額總和必須等於總金額', 'error');
           return;
         }
-        displayPayer = '兩人';
-
-        const actualPayerSelect = document.getElementById('actualPayer').value;
-        if (actualPayerSelect === 'you') {
-          actualPayer = '你';
-        } else if (actualPayerSelect === 'partner') {
-          actualPayer = '對方';
-        } else {
-          actualPayer = '各自';
+      } else {
+        // 自動平分
+        if (payForYou && payForPartner) {
+          // 兩個都勾 → 平分
+          yourPart = partnerPart = amount / 2;
+        } else if (payForYou) {
+          // 只勾「我」→ 我全額
+          yourPart = amount;
+          partnerPart = 0;
+        } else if (payForPartner) {
+          // 只勾「對方」→ 對方全額
+          yourPart = 0;
+          partnerPart = amount;
         }
+      }
+
+      // 設定 displayPayer
+      if (payForYou && payForPartner) {
+        displayPayer = '兩人';
+      } else if (payForYou) {
+        displayPayer = '你';
+      } else {
+        displayPayer = '對方';
       }
 
       // 週期支出設定
@@ -2531,22 +2547,29 @@
     }
 
     function updatePaymentMethod() {
-      const paymentMethod = document.getElementById('paymentMethod').value;
+      const payForYou = document.getElementById('payForYou').checked;
+      const payForPartner = document.getElementById('payForPartner').checked;
       const customSplit = document.getElementById('customSplit');
-      const actualPayerGroup = document.getElementById('actualPayerGroup');
+      const yourPartInput = document.getElementById('yourPart');
+      const partnerPartInput = document.getElementById('partnerPart');
 
-      // 顯示/隱藏「誰先付錢」欄位（只在平分或自訂時顯示）
-      if (paymentMethod === 'split' || paymentMethod === 'custom') {
-        actualPayerGroup.classList.remove('hidden');
-      } else {
-        actualPayerGroup.classList.add('hidden');
-      }
+      // 檢查是否需要顯示自訂金額欄位
+      // 條件：兩個都勾選 + 有填入自訂金額
+      const hasCustomAmount = (yourPartInput.value || partnerPartInput.value);
 
-      // 顯示/隱藏「自訂金額」欄位
-      if (paymentMethod === 'custom') {
+      if (payForYou && payForPartner && hasCustomAmount) {
+        customSplit.classList.remove('hidden');
+      } else if (payForYou && payForPartner) {
+        // 兩個都勾但沒填金額，隱藏但允許點擊顯示
         customSplit.classList.remove('hidden');
       } else {
         customSplit.classList.add('hidden');
+      }
+
+      // 至少要勾選一個
+      if (!payForYou && !payForPartner) {
+        showToast('請至少勾選一個成員', 'error');
+        document.getElementById('payForYou').checked = true;
       }
     }
 
