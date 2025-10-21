@@ -1950,7 +1950,10 @@
 
     // 關閉成員管理 Modal
     function closeMembersModal() {
-      document.getElementById('membersModal').classList.add('hidden');
+      const modal = document.getElementById('membersModal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
     }
 
     // 載入成員列表

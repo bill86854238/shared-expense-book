@@ -564,28 +564,63 @@ function checkRateLimit(action) {
  * 取得所有成員列表
  */
 function getMembers() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
-  const owner = ss.getOwner().getEmail();
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const owner = ss.getOwner().getEmail();
 
-  // 讀取允許的使用者清單
-  const allowedUsers = settingsSheet.getRange('B6').getValue();
+    // 檢查設定工作表是否存在
+    let settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
 
-  if (!allowedUsers) {
+    if (!settingsSheet) {
+      // 如果沒有設定工作表，返回擁有者
+      return [{
+        email: owner,
+        isOwner: true,
+        name: owner.split('@')[0]
+      }];
+    }
+
+    // 讀取允許的使用者清單
+    const allowedUsers = settingsSheet.getRange('B6').getValue();
+
+    if (!allowedUsers || allowedUsers.toString().trim() === '') {
+      // 如果沒有設定，返回擁有者
+      return [{
+        email: owner,
+        isOwner: true,
+        name: owner.split('@')[0]
+      }];
+    }
+
+    const userList = allowedUsers.toString().split(',').map(u => u.trim()).filter(u => u);
+
+    // 確保擁有者在列表中
+    const members = userList.map(email => ({
+      email: email,
+      isOwner: email === owner,
+      name: email.split('@')[0]
+    }));
+
+    // 如果擁有者不在列表中，加入擁有者
+    if (!members.some(m => m.email === owner)) {
+      members.unshift({
+        email: owner,
+        isOwner: true,
+        name: owner.split('@')[0]
+      });
+    }
+
+    return members;
+  } catch (error) {
+    Logger.log('getMembers error: ' + error.toString());
+    // 發生錯誤時返回擁有者
+    const owner = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
     return [{
       email: owner,
       isOwner: true,
       name: owner.split('@')[0]
     }];
   }
-
-  const userList = allowedUsers.split(',').map(u => u.trim());
-
-  return userList.map(email => ({
-    email: email,
-    isOwner: email === owner,
-    name: email.split('@')[0]
-  }));
 }
 
 /**
