@@ -1180,16 +1180,21 @@
       <div class="form-group">
         <label>付款方式</label>
         <select id="paymentMethod" onchange="updatePaymentMethod()">
-          <option value="you">我付（我負擔，我掏錢）</option>
-          <option value="partner">對方付（對方負擔，對方掏錢）</option>
-          <option value="help-me">幫我付（我負擔，對方掏錢）</option>
-          <option value="help-partner">幫對方付（對方負擔，我掏錢）</option>
-          <option value="split-you">平分 - 我先付（各 50%，我先掏錢）</option>
-          <option value="split-partner">平分 - 對方先付（各 50%，對方先掏錢）</option>
-          <option value="split-each">平分 - 各付各的（各 50%，各自掏錢）</option>
-          <option value="custom-you">自訂 - 我先付（自訂比例，我先掏錢）</option>
-          <option value="custom-partner">自訂 - 對方先付（自訂比例，對方先掏錢）</option>
-          <option value="custom-each">自訂 - 各付各的（自訂比例，各自掏錢）</option>
+          <option value="you">我付</option>
+          <option value="partner">對方付</option>
+          <option value="help-me">幫我付</option>
+          <option value="help-partner">幫對方付</option>
+          <option value="split">平分</option>
+          <option value="custom">自訂</option>
+        </select>
+      </div>
+
+      <div class="form-group hidden" id="actualPayerGroup">
+        <label>誰先付錢</label>
+        <select id="actualPayer">
+          <option value="you">我先付</option>
+          <option value="partner">對方先付</option>
+          <option value="each">各付各的</option>
         </select>
       </div>
 
@@ -2416,7 +2421,7 @@
 
       let yourPart = 0, partnerPart = 0, displayPayer = '', actualPayer = '';
 
-      // 處理新的付款方式
+      // 處理付款方式
       if (paymentMethod === 'you') {
         // 我付（我負擔，我掏錢）
         yourPart = amount;
@@ -2441,23 +2446,20 @@
         partnerPart = amount;
         displayPayer = '對方';
         actualPayer = '你';
-      } else if (paymentMethod === 'split-you') {
-        // 平分 - 我先付
+      } else if (paymentMethod === 'split') {
+        // 平分 - 需要從第二個下拉選單取得誰先付
         yourPart = partnerPart = amount / 2;
         displayPayer = '兩人';
-        actualPayer = '你';
-      } else if (paymentMethod === 'split-partner') {
-        // 平分 - 對方先付
-        yourPart = partnerPart = amount / 2;
-        displayPayer = '兩人';
-        actualPayer = '對方';
-      } else if (paymentMethod === 'split-each') {
-        // 平分 - 各付各的
-        yourPart = partnerPart = amount / 2;
-        displayPayer = '兩人';
-        actualPayer = '各自';
-      } else if (paymentMethod.startsWith('custom-')) {
-        // 自訂金額
+        const actualPayerSelect = document.getElementById('actualPayer').value;
+        if (actualPayerSelect === 'you') {
+          actualPayer = '你';
+        } else if (actualPayerSelect === 'partner') {
+          actualPayer = '對方';
+        } else {
+          actualPayer = '各自';
+        }
+      } else if (paymentMethod === 'custom') {
+        // 自訂金額 - 需要從第二個下拉選單取得誰先付
         yourPart = parseFloat(document.getElementById('yourPart').value) || 0;
         partnerPart = parseFloat(document.getElementById('partnerPart').value) || 0;
         if (Math.abs(yourPart + partnerPart - amount) > 0.01) {
@@ -2466,11 +2468,12 @@
         }
         displayPayer = '兩人';
 
-        if (paymentMethod === 'custom-you') {
+        const actualPayerSelect = document.getElementById('actualPayer').value;
+        if (actualPayerSelect === 'you') {
           actualPayer = '你';
-        } else if (paymentMethod === 'custom-partner') {
+        } else if (actualPayerSelect === 'partner') {
           actualPayer = '對方';
-        } else if (paymentMethod === 'custom-each') {
+        } else {
           actualPayer = '各自';
         }
       }
@@ -2530,9 +2533,17 @@
     function updatePaymentMethod() {
       const paymentMethod = document.getElementById('paymentMethod').value;
       const customSplit = document.getElementById('customSplit');
+      const actualPayerGroup = document.getElementById('actualPayerGroup');
 
-      // 只有選擇「自訂」開頭的選項才顯示自訂金額欄位
-      if (paymentMethod.startsWith('custom-')) {
+      // 顯示/隱藏「誰先付錢」欄位（只在平分或自訂時顯示）
+      if (paymentMethod === 'split' || paymentMethod === 'custom') {
+        actualPayerGroup.classList.remove('hidden');
+      } else {
+        actualPayerGroup.classList.add('hidden');
+      }
+
+      // 顯示/隱藏「自訂金額」欄位
+      if (paymentMethod === 'custom') {
         customSplit.classList.remove('hidden');
       } else {
         customSplit.classList.add('hidden');
