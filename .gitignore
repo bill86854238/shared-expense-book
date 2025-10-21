@@ -1,3 +1,6 @@
 node_modules/
 .DS_Store
 *.log
+
+# 個人文章草稿（不分享）
+方格子文章.md
