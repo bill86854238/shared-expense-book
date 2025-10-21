@@ -1094,6 +1094,22 @@
         </select>
       </div>
 
+      <!-- 週期支出設定 -->
+      <div class="form-group">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="isRecurring" onchange="toggleRecurringDay()" style="width: auto; cursor: pointer;">
+          <span>🔄 設為週期支出（每月固定日期自動記帳）</span>
+        </label>
+      </div>
+
+      <div class="form-group hidden" id="recurringDayGroup">
+        <label>每月執行日（1-31）</label>
+        <input type="number" id="recurringDay" placeholder="例如：1（每月 1 號）" min="1" max="31">
+        <small style="color: #666; font-size: 0.85em; margin-top: 5px; display: block;">
+          💡 系統會在每月指定日期的早上 9:00 自動新增此筆支出
+        </small>
+      </div>
+
       <button class="btn btn-primary" onclick="addExpense()">新增支出</button>
     </div>
 
@@ -1911,6 +1927,16 @@
         displayPayer = '兩人';
       }
 
+      // 週期支出設定
+      const isRecurring = document.getElementById('isRecurring').checked;
+      const recurringDay = isRecurring ? parseInt(document.getElementById('recurringDay').value) || 0 : 0;
+
+      // 驗證週期日期
+      if (isRecurring && (recurringDay < 1 || recurringDay > 31)) {
+        showToast('每月執行日必須在 1-31 之間', 'error');
+        return;
+      }
+
       const expenseData = {
         item: item,
         amount: amount,
@@ -1918,8 +1944,8 @@
         yourPart: yourPart,
         partnerPart: partnerPart,
         category: category,
-        isRecurring: false,
-        recurringDay: ''
+        isRecurring: isRecurring,
+        recurringDay: recurringDay
       };
 
       // 按鈕 Loading 狀態
@@ -1930,10 +1956,16 @@
       google.script.run
         .withSuccessHandler(function() {
           showToast('新增成功！ 🎉', 'success');
+
+          // 清空表單
           document.getElementById('item').value = '';
           document.getElementById('amount').value = '';
           document.getElementById('yourPart').value = '';
           document.getElementById('partnerPart').value = '';
+          document.getElementById('isRecurring').checked = false;
+          document.getElementById('recurringDay').value = '';
+          document.getElementById('recurringDayGroup').classList.add('hidden');
+
           btn.disabled = false;
           btn.classList.remove('btn-loading');
           loadData();
@@ -1960,6 +1992,18 @@
       } else {
         payerGroup.classList.add('hidden');
         customSplit.classList.remove('hidden');
+      }
+    }
+
+    function toggleRecurringDay() {
+      const isRecurring = document.getElementById('isRecurring').checked;
+      const recurringDayGroup = document.getElementById('recurringDayGroup');
+
+      if (isRecurring) {
+        recurringDayGroup.classList.remove('hidden');
+      } else {
+        recurringDayGroup.classList.add('hidden');
+        document.getElementById('recurringDay').value = '';
       }
     }
 
