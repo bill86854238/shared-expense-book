@@ -718,31 +718,222 @@
       color: #6b7280;
     }
 
-    @media (max-width: 600px) {
+    /* ==================== 響應式設計 (RWD) ==================== */
+
+    /* 大螢幕 (桌機) - 1200px 以上 */
+    @media (min-width: 1200px) {
       .container {
-        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .stats {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .dashboard {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    /* 中等螢幕 (平板橫向) - 768px 到 1199px */
+    @media (min-width: 768px) and (max-width: 1199px) {
+      .container {
+        padding: 30px;
+      }
+
+      .stats {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .dashboard {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .form-section {
+        padding: 25px;
+      }
+    }
+
+    /* 小螢幕 (平板直向) - 600px 到 767px */
+    @media (min-width: 600px) and (max-width: 767px) {
+      .container {
+        padding: 25px;
       }
 
       h1 {
-        font-size: 1.5em;
+        font-size: 1.8em;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .stat-card:last-child {
+        grid-column: 1 / -1;
+      }
+
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .quick-btn {
+        flex: 1 1 calc(33.333% - 8px);
+        min-width: 100px;
+      }
+    }
+
+    /* 手機 - 600px 以下 */
+    @media (max-width: 599px) {
+      .container {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 1.3em;
+      }
+
+      h2 {
+        font-size: 1.1em;
+      }
+
+      .subtitle {
+        font-size: 0.85em;
+      }
+
+      /* 統計卡片 - 垂直排列 */
+      .stats {
+        grid-template-columns: 1fr;
+        gap: 12px;
       }
 
       .stat-card {
         padding: 15px;
       }
 
+      .stat-value {
+        font-size: 1.5em;
+      }
+
+      /* 儀表板 - 垂直排列 */
+      .dashboard {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .dashboard-card {
+        padding: 15px;
+      }
+
+      /* 表單 */
+      .form-section {
+        padding: 20px;
+      }
+
+      .form-group label {
+        font-size: 0.9em;
+      }
+
+      .form-group input,
+      .form-group select {
+        font-size: 0.95em;
+      }
+
+      /* 快速記帳按鈕 - 每行 2 個 */
+      .quick-btn {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 0;
+        font-size: 0.85em;
+        padding: 10px;
+      }
+
+      /* 支出記錄 */
+      .expense-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .expense-item > div:last-child {
+        width: 100%;
+        justify-content: space-between;
+      }
+
       .expense-amount {
+        font-size: 1.1em;
+      }
+
+      .delete-btn {
+        padding: 6px 12px;
+        font-size: 0.85em;
+      }
+
+      /* Toast 通知 */
+      .toast {
+        left: 15px;
+        right: 15px;
+        max-width: none;
+        font-size: 0.9em;
+      }
+
+      /* 使用者資訊 */
+      .user-name {
+        display: none;
+      }
+
+      .user-email {
+        font-size: 0.75em;
+      }
+
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+      }
+
+      /* Modal */
+      .modal-content {
+        width: 95%;
+        max-width: none;
+        padding: 20px;
+      }
+
+      /* 按鈕 */
+      .btn {
+        font-size: 0.95em;
+      }
+
+      .members-btn,
+      .logout-btn {
+        padding: 8px 12px;
+        font-size: 0.85em;
+      }
+    }
+
+    /* 極小螢幕 - 400px 以下 */
+    @media (max-width: 400px) {
+      .container {
+        padding: 10px;
+      }
+
+      h1 {
         font-size: 1.2em;
       }
 
-      .toast {
-        left: 20px;
-        right: 20px;
-        max-width: none;
+      .quick-btn {
+        font-size: 0.8em;
+        padding: 8px;
       }
 
-      .user-name {
-        display: none;
+      .stat-icon {
+        font-size: 1.5em;
+      }
+
+      .stat-label {
+        font-size: 0.8em;
+      }
+
+      .stat-value {
+        font-size: 1.3em;
       }
     }
   </style>
