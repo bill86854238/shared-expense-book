@@ -399,6 +399,13 @@
       animation: fadeIn 0.3s ease-out;
     }
 
+    .modal.hidden {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
     .modal-content {
       background: white;
       padding: 30px;
@@ -1950,17 +1957,9 @@
 
     // 關閉成員管理 Modal
     function closeMembersModal() {
-      console.log('closeMembersModal 被調用了！');
       const modal = document.getElementById('membersModal');
-      console.log('modal element:', modal);
-      console.log('modal classes before:', modal ? modal.className : 'modal 不存在');
-
       if (modal) {
         modal.classList.add('hidden');
-        modal.style.display = 'none'; // 強制隱藏
-        console.log('modal classes after:', modal.className);
-      } else {
-        console.error('找不到 membersModal 元素！');
       }
     }
 
