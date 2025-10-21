@@ -565,14 +565,25 @@ function checkRateLimit(action) {
  */
 function getMembers() {
   try {
+    Logger.log('getMembers: 開始執行');
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const owner = ss.getOwner().getEmail();
+    Logger.log('getMembers: 已取得試算表');
+
+    let owner;
+    try {
+      owner = ss.getOwner().getEmail();
+      Logger.log('getMembers: 擁有者 = ' + owner);
+    } catch (ownerError) {
+      Logger.log('getMembers: 無法取得擁有者，使用當前用戶');
+      owner = Session.getActiveUser().getEmail();
+    }
 
     // 檢查設定工作表是否存在
     let settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+    Logger.log('getMembers: 設定工作表存在 = ' + (settingsSheet != null));
 
     if (!settingsSheet) {
-      // 如果沒有設定工作表，返回擁有者
+      Logger.log('getMembers: 設定工作表不存在，返回擁有者');
       return [{
         email: owner,
         isOwner: true,
@@ -581,10 +592,12 @@ function getMembers() {
     }
 
     // 讀取允許的使用者清單
-    const allowedUsers = settingsSheet.getRange('B6').getValue();
-
-    if (!allowedUsers || allowedUsers.toString().trim() === '') {
-      // 如果沒有設定，返回擁有者
+    let allowedUsers;
+    try {
+      allowedUsers = settingsSheet.getRange('B6').getValue();
+      Logger.log('getMembers: 允許的使用者 = ' + allowedUsers);
+    } catch (rangeError) {
+      Logger.log('getMembers: 讀取 B6 失敗: ' + rangeError.toString());
       return [{
         email: owner,
         isOwner: true,
@@ -592,17 +605,39 @@ function getMembers() {
       }];
     }
 
-    const userList = allowedUsers.toString().split(',').map(u => u.trim()).filter(u => u);
+    if (!allowedUsers || allowedUsers.toString().trim() === '') {
+      Logger.log('getMembers: 白名單為空，返回擁有者');
+      return [{
+        email: owner,
+        isOwner: true,
+        name: owner.split('@')[0]
+      }];
+    }
+
+    const userList = allowedUsers.toString().split(',').map(function(u) {
+      return u.trim();
+    }).filter(function(u) {
+      return u;
+    });
+
+    Logger.log('getMembers: 用戶列表 = ' + userList.join(', '));
 
     // 確保擁有者在列表中
-    const members = userList.map(email => ({
-      email: email,
-      isOwner: email === owner,
-      name: email.split('@')[0]
-    }));
+    const members = userList.map(function(email) {
+      return {
+        email: email,
+        isOwner: email === owner,
+        name: email.split('@')[0]
+      };
+    });
 
     // 如果擁有者不在列表中，加入擁有者
-    if (!members.some(m => m.email === owner)) {
+    const ownerExists = members.some(function(m) {
+      return m.email === owner;
+    });
+
+    if (!ownerExists) {
+      Logger.log('getMembers: 擁有者不在列表中，添加');
       members.unshift({
         email: owner,
         isOwner: true,
@@ -610,16 +645,14 @@ function getMembers() {
       });
     }
 
+    Logger.log('getMembers: 返回 ' + members.length + ' 個成員');
     return members;
   } catch (error) {
     Logger.log('getMembers error: ' + error.toString());
-    // 發生錯誤時返回擁有者
-    const owner = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
-    return [{
-      email: owner,
-      isOwner: true,
-      name: owner.split('@')[0]
-    }];
+    Logger.log('getMembers error stack: ' + error.stack);
+
+    // 發生錯誤時返回空陣列並拋出錯誤，讓前端知道
+    throw new Error('無法載入成員列表：' + error.message);
   }
 }
 
