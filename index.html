@@ -401,9 +401,6 @@
 
     .modal.hidden {
       display: none !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
     }
 
     .modal-content {
@@ -1650,15 +1647,41 @@
       btn.classList.add('btn-loading');
 
       google.script.run
-        .withSuccessHandler(function() {
+        .withSuccessHandler(function(newId) {
           showToast('新增成功！ 🎉', 'success');
+
+          // 清空表單
           document.getElementById('item').value = '';
           document.getElementById('amount').value = '';
           document.getElementById('yourPart').value = '';
           document.getElementById('partnerPart').value = '';
+
+          // 建立新支出物件
+          const today = new Date();
+          const dateStr = today.getFullYear() + '-' +
+                         String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                         String(today.getDate()).padStart(2, '0');
+
+          const newExpense = {
+            date: dateStr,
+            item: expenseData.item,
+            amount: expenseData.amount,
+            payer: expenseData.payer,
+            yourPart: expenseData.yourPart,
+            partnerPart: expenseData.partnerPart,
+            category: expenseData.category,
+            isRecurring: false,
+            recurringDay: '',
+            id: newId
+          };
+
+          // 直接加入陣列並更新 UI（立即更新）
+          allExpenses.push(newExpense);
+          filteredExpenses.push(newExpense);
+          updateUI(filteredExpenses);
+
           btn.disabled = false;
           btn.classList.remove('btn-loading');
-          loadData();
         })
         .withFailureHandler(function(error) {
           showError(error);
