@@ -369,7 +369,7 @@
     }
 
     .hidden {
-      display: none;
+      display: none !important;
     }
 
     h2 {
@@ -1000,7 +1000,7 @@
       <div class="modal-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <h2 style="margin: 0;">👥 成員管理</h2>
-          <button id="closeMembersBtn" class="close-modal-btn" style="background: none; border: none; font-size: 1.8em; cursor: pointer; color: #999; padding: 5px 10px; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#999'">×</button>
+          <button id="closeMembersBtn" class="close-modal-btn" onclick="closeMembersModal(); return false;" style="background: none; border: none; font-size: 1.8em; cursor: pointer; color: #999; padding: 5px 10px; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#999'">×</button>
         </div>
 
         <!-- 邀請新成員 -->
@@ -1950,9 +1950,17 @@
 
     // 關閉成員管理 Modal
     function closeMembersModal() {
+      console.log('closeMembersModal 被調用了！');
       const modal = document.getElementById('membersModal');
+      console.log('modal element:', modal);
+      console.log('modal classes before:', modal ? modal.className : 'modal 不存在');
+
       if (modal) {
         modal.classList.add('hidden');
+        modal.style.display = 'none'; // 強制隱藏
+        console.log('modal classes after:', modal.className);
+      } else {
+        console.error('找不到 membersModal 元素！');
       }
     }
 
