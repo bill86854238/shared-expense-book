@@ -1178,12 +1178,18 @@
       </div>
 
       <div class="form-group">
-        <label>誰先付錢（實際付款人）</label>
+        <label>誰付錢</label>
         <select id="actualPayer" onchange="updatePaymentMethod()">
           <option value="you">我</option>
           <option value="partner">對方</option>
           <option value="each">各付各的</option>
+          <option value="custom">自訂</option>
         </select>
+      </div>
+
+      <div class="form-group hidden" id="customPayerField">
+        <label>自訂付款人</label>
+        <input type="text" id="customPayer" placeholder="輸入付款人名稱">
       </div>
 
       <div class="form-group">
@@ -2423,15 +2429,25 @@
         return;
       }
 
-      // 取得誰先付錢
+      // 取得誰付錢
       const actualPayerValue = document.getElementById('actualPayer').value;
       let actualPayer = '';
       if (actualPayerValue === 'you') {
         actualPayer = '你';
       } else if (actualPayerValue === 'partner') {
         actualPayer = '對方';
-      } else {
+      } else if (actualPayerValue === 'each') {
         actualPayer = '各自';
+      } else if (actualPayerValue === 'custom') {
+        actualPayer = document.getElementById('customPayer').value.trim();
+        if (!actualPayer) {
+          showToast('請輸入自訂付款人名稱', 'error');
+          return;
+        }
+        if (!validateInput(actualPayer, 'text', 1, 50)) {
+          showToast('付款人名稱必須是 1-50 字元', 'error');
+          return;
+        }
       }
 
       // 取得幫誰付款
@@ -2547,11 +2563,20 @@
     }
 
     function updatePaymentMethod() {
+      const actualPayerSelect = document.getElementById('actualPayer').value;
+      const customPayerField = document.getElementById('customPayerField');
       const payForYou = document.getElementById('payForYou').checked;
       const payForPartner = document.getElementById('payForPartner').checked;
       const customSplit = document.getElementById('customSplit');
       const yourPartInput = document.getElementById('yourPart');
       const partnerPartInput = document.getElementById('partnerPart');
+
+      // 顯示/隱藏自訂付款人欄位
+      if (actualPayerSelect === 'custom') {
+        customPayerField.classList.remove('hidden');
+      } else {
+        customPayerField.classList.add('hidden');
+      }
 
       // 檢查是否需要顯示自訂金額欄位
       // 條件：兩個都勾選 + 有填入自訂金額
