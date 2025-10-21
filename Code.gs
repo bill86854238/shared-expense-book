@@ -369,9 +369,14 @@ function doGet() {
   }
 
   // 有權限則顯示主頁面
-  return HtmlService.createHtmlOutputFromFile('index')
+  const htmlOutput = HtmlService.createHtmlOutputFromFile('index')
     .setTitle('共同記帳')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT); // 防止點擊劫持
+
+  // 強制設定 viewport - 這是關鍵！
+  htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+
+  return htmlOutput;
 }
 
 function getExpenses(filters) {
