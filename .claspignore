@@ -1,21 +1,13 @@
 # Git 相關
 .git/**
 .gitignore
-README.md
-LICENSE
-FAQ.md
+
+# 文檔 - 所有 .md 檔案
 *.md
 
 # Node modules
 node_modules/**
 
-# 文檔
-最終*.md
-完整*.md
-成員*.md
-多幣*.md
-新功*.md
-UI*.md
-
-# 避免重複的 code.js
-code.js
+# 避免上傳 .js 檔案（clasp 會自動從 .gs 轉換）
+*.js
+!appsscript.json
