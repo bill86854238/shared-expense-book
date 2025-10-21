@@ -373,8 +373,8 @@ function doGet() {
     .setTitle('共同記帳')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT); // 防止點擊劫持
 
-  // 強制設定 viewport - 這是關鍵！
-  htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+  // 強制設定 viewport - 禁止縮放避免 iPhone 輸入時自動縮放
+  htmlOutput.addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
 
   return htmlOutput;
 }
@@ -961,7 +961,7 @@ function showStatistics() {
     categoryList += `\n${category}: ${amount.toLocaleString()}`;
   }
 
-  const message = `📊 統計資料\n\n💰 總支出: ${stats.total.toLocaleString()}\n\n👤 你付了: ${stats.yourTotal.toLocaleString()}\n👤 對方付了: ${stats.partnerTotal.toLocaleString()}\n\n${stats.difference > 0 ? `✅ 對方欠你: ${Math.abs(stats.difference).toLocaleString()}` : stats.difference < 0 ? `⚠️ 你欠對方: ${Math.abs(stats.difference).toLocaleString()}` : `✅ 已結清`}\n\n📈 分類統計:${categoryList}`;
+  const message = `📊 統計資料\n\n💰 總支出: ${stats.total.toLocaleString()}\n\n👤 你付了: ${stats.yourTotal.toLocaleString()}\n👤 對方付了: ${stats.partnerTotal.toLocaleString()}\n\n${stats.difference > 0 ? `✅ 換對方付: ${Math.abs(stats.difference).toLocaleString()}` : stats.difference < 0 ? `⚠️ 換你付: ${Math.abs(stats.difference).toLocaleString()}` : `✅ 已結清`}\n\n📈 分類統計:${categoryList}`;
 
   SpreadsheetApp.getUi().alert(message);
 }

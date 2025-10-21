@@ -241,19 +241,48 @@
     }
 
     .expenses-list {
-      margin-top: 20px;
+      margin-top: 16px;
+    }
+
+    .date-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      margin: 16px 0 8px 0;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border-radius: 6px;
+      border-left: 3px solid #667eea;
+      font-weight: 600;
+    }
+
+    .date-header:first-child {
+      margin-top: 0;
+    }
+
+    .date-text {
+      color: #334155;
+      font-size: 0.88em;
+      font-weight: 600;
+    }
+
+    .date-total {
+      color: #667eea;
+      font-size: 0.92em;
+      font-weight: 700;
     }
 
     .expense-item {
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 6px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       transition: all 0.3s ease;
       animation: fadeIn 0.5s ease-out;
       border: 2px solid transparent;
+      gap: 12px;
     }
 
     @keyframes fadeIn {
@@ -268,35 +297,47 @@
     }
 
     .expense-item:hover {
-      transform: translateX(5px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
     }
 
     .expense-item.you {
       background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-      border-left: 4px solid #3b82f6;
+      border-left: 3px solid #3b82f6;
     }
 
     .expense-item.partner {
       background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
-      border-left: 4px solid #ec4899;
+      border-left: 3px solid #ec4899;
     }
 
     .expense-item.both {
       background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-      border-left: 4px solid #a855f7;
+      border-left: 3px solid #a855f7;
     }
 
     .expense-info {
       flex: 1;
+      min-width: 0;
+      line-height: 1.5;
+    }
+
+    .expense-info strong {
+      font-size: 0.95em;
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .expense-info > div {
+      margin-bottom: 0;
     }
 
     .expense-amount {
-      font-size: 1.5em;
-      font-weight: bold;
-      color: #333;
+      font-size: 1.2em;
+      font-weight: 700;
+      color: #1f2937;
       white-space: nowrap;
-      margin-left: 15px;
+      letter-spacing: -0.5px;
     }
 
     .loading {
@@ -489,20 +530,34 @@
       font-size: 0.85em;
     }
 
+    .expense-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
     .edit-btn {
       background: #10b981;
       color: white;
       border: none;
       padding: 6px 12px;
-      border-radius: 6px;
+      border-radius: 5px;
       cursor: pointer;
-      font-size: 0.85em;
-      transition: all 0.3s ease;
+      font-size: 0.8em;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      white-space: nowrap;
     }
 
     .edit-btn:hover {
       background: #059669;
-      transform: scale(1.05);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+    }
+
+    .edit-btn:active {
+      transform: translateY(0);
     }
 
     .delete-btn {
@@ -510,15 +565,22 @@
       color: white;
       border: none;
       padding: 6px 12px;
-      border-radius: 6px;
+      border-radius: 5px;
       cursor: pointer;
-      font-size: 0.85em;
-      transition: all 0.3s ease;
+      font-size: 0.8em;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      white-space: nowrap;
     }
 
     .delete-btn:hover {
       background: #dc2626;
-      transform: scale(1.05);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+    }
+
+    .delete-btn:active {
+      transform: translateY(0);
     }
 
     .user-avatar {
@@ -896,32 +958,68 @@
         min-height: 44px; /* iOS 建議最小點擊區域 */
       }
 
+      /* 日期標題 */
+      .date-header {
+        padding: 8px 10px;
+        margin: 15px 0 8px 0;
+        font-size: 0.9em;
+      }
+
+      .date-text {
+        font-size: 0.9em;
+      }
+
+      .date-total {
+        font-size: 0.95em;
+      }
+
       /* 支出記錄 */
       .expense-item {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 15px; /* 增加內距 */
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px; /* 緊湊一點 */
       }
 
       .expense-item > div:last-child {
         width: 100%;
+        display: flex;
         justify-content: space-between;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 10px;
+      }
+
+      .expense-info {
+        margin-bottom: 4px;
       }
 
       .expense-info strong {
-        font-size: 1.1em; /* 增大項目名稱 */
+        font-size: 1em;
+        display: block;
+        margin-bottom: 4px;
       }
 
       .expense-amount {
-        font-size: 1.3em; /* 增大金額字體 */
+        font-size: 1.1em;
+        margin-left: 0;
+        flex: 0 0 auto;
+        min-width: 80px;
+      }
+
+      .expense-actions {
+        display: flex;
+        gap: 6px;
+        flex: 0 0 auto;
       }
 
       .edit-btn,
       .delete-btn {
-        padding: 10px 16px; /* 增大按鈕 */
-        font-size: 0.95em;
-        min-height: 44px; /* iOS 建議最小點擊區域 */
+        padding: 10px 12px;
+        font-size: 0.85em;
+        flex: 0 0 auto;
+        min-height: 40px;
+        min-width: 60px;
       }
 
       /* Toast 通知 */
@@ -1033,15 +1131,24 @@
 </head>
 <body>
   <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <h1 style="margin: 0;">💑 共同記帳</h1>
-      <div id="userInfo" style="display: flex; align-items: center; gap: 12px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 12px; flex-wrap: wrap;">
+      <h1 style="margin: 0; flex-shrink: 0;">💑 共同記帳</h1>
+      <div id="userInfo" style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
         <div style="font-size: 0.9em; color: #999;">載入中...</div>
       </div>
     </div>
     <div class="subtitle">讓錢的事變簡單</div>
 
-    <!-- 新增支出表單 - 移到最上方方便快速記帳 -->
+    <!-- 結算卡片 - 最重要的資訊 -->
+    <div style="margin-bottom: 20px;">
+      <div class="stat-card balance" style="width: 100%; max-width: 100%;">
+        <div class="stat-icon">💰</div>
+        <div class="stat-label">結算</div>
+        <div class="stat-value" id="balance">已結清</div>
+      </div>
+    </div>
+
+    <!-- 新增支出表單 -->
     <div class="form-section">
       <h2 style="margin-bottom: 15px;">💰 新增支出</h2>
 
@@ -1072,18 +1179,11 @@
 
       <div class="form-group">
         <label>付款方式</label>
-        <select id="splitType" onchange="updatePayerOptions()">
-          <option value="single">單人付款</option>
-          <option value="equal">平分</option>
-          <option value="custom">自訂分帳</option>
-        </select>
-      </div>
-
-      <div class="form-group" id="payerGroup">
-        <label>誰付的</label>
-        <select id="payer">
-          <option value="你">你</option>
-          <option value="對方">對方</option>
+        <select id="paymentMethod" onchange="updatePaymentMethod()">
+          <option value="you">我付（你全付）</option>
+          <option value="partner">對方付（對方全付）</option>
+          <option value="split">AA制（兩人平分）</option>
+          <option value="custom">自訂金額</option>
         </select>
       </div>
 
@@ -1129,25 +1229,7 @@
       <button class="btn btn-primary" onclick="addExpense()">新增支出</button>
     </div>
 
-    <div class="stats" id="stats">
-      <div class="stat-card you">
-        <div class="stat-icon">👤</div>
-        <div class="stat-label">你付了</div>
-        <div class="stat-value" id="yourTotal">$0</div>
-      </div>
-      <div class="stat-card partner">
-        <div class="stat-icon">👤</div>
-        <div class="stat-label">對方付了</div>
-        <div class="stat-value" id="partnerTotal">$0</div>
-      </div>
-      <div class="stat-card balance">
-        <div class="stat-icon">💰</div>
-        <div class="stat-label">結算</div>
-        <div class="stat-value" id="balance">已結清</div>
-      </div>
-    </div>
-
-    <!-- 仪表板 -->
+    <!-- 儀表板 -->
     <div style="margin-bottom: 10px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h2 style="margin: 0; font-size: 1.1em; color: #374151;">📊 數據分析</h2>
@@ -1156,8 +1238,22 @@
           <option value="lastMonth">上月</option>
           <option value="last7days">最近 7 天</option>
           <option value="last30days">最近 30 天</option>
+          <option value="currentYear">今年</option>
+          <option value="all">全部</option>
+          <option value="custom">自訂範圍</option>
           <option value="comparison">本月 vs 上月</option>
         </select>
+      </div>
+
+      <!-- 自訂範圍選擇器 -->
+      <div id="customRangeSelector" class="hidden" style="margin-bottom: 15px; padding: 15px; background: #f9fafb; border-radius: 8px;">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <label style="font-size: 0.9em; color: #374151; font-weight: 500;">開始日期：</label>
+          <input type="date" id="customStartDate" style="padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 0.9em;">
+          <label style="font-size: 0.9em; color: #374151; font-weight: 500;">結束日期：</label>
+          <input type="date" id="customEndDate" style="padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 0.9em;">
+          <button onclick="applyCustomRange()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em; font-weight: 500;">套用</button>
+        </div>
       </div>
     </div>
 
@@ -1177,29 +1273,29 @@
             <span class="dashboard-value" id="value2">0 筆</span>
           </div>
           <div class="dashboard-row">
-            <span class="dashboard-label" id="label3">日均支出</span>
-            <span class="dashboard-value" id="value3">$0</span>
+            <span class="dashboard-label" id="label3">分類占比</span>
+            <span class="dashboard-value" id="value3" style="font-size: 0.85em; line-height: 1.4;">-</span>
           </div>
         </div>
       </div>
 
       <div class="dashboard-card">
         <div class="dashboard-header">
-          <span class="dashboard-icon">🏆</span>
-          <span class="dashboard-title" id="dashboardTitle2">排行榜</span>
+          <span class="dashboard-icon">👥</span>
+          <span class="dashboard-title" id="dashboardTitle2">付款統計</span>
         </div>
         <div class="dashboard-content">
           <div class="dashboard-row">
-            <span class="dashboard-label">最多支出</span>
-            <span class="dashboard-value" id="topCategory">飲食</span>
+            <span class="dashboard-label">👤 你付了</span>
+            <span class="dashboard-value" id="yourTotal">$0</span>
           </div>
           <div class="dashboard-row">
-            <span class="dashboard-label">最大單筆</span>
-            <span class="dashboard-value" id="maxExpense">$0</span>
+            <span class="dashboard-label">👤 對方付了</span>
+            <span class="dashboard-value" id="partnerTotal">$0</span>
           </div>
           <div class="dashboard-row">
-            <span class="dashboard-label">最常記帳</span>
-            <span class="dashboard-value" id="topPayer">你</span>
+            <span class="dashboard-label">📊 總支出</span>
+            <span class="dashboard-value" id="totalExpense">$0</span>
           </div>
         </div>
       </div>
@@ -1414,6 +1510,24 @@
     // 全局變數
     let allExpenses = [];
     let filteredExpenses = [];
+    let displayedCount = 50; // 預設顯示 50 筆
+    const LOAD_MORE_COUNT = 50; // 每次載入 50 筆
+
+    // ==================== 工具函數 ====================
+
+    /**
+     * 金額格式化 - 超過 10000 使用 K 單位
+     */
+    function formatMoney(amount) {
+      const num = Number(amount);
+      if (isNaN(num)) return '$0';
+
+      if (num >= 10000) {
+        const k = (num / 1000).toFixed(1);
+        return '$' + k + 'K';
+      }
+      return '$' + num.toLocaleString();
+    }
 
     // ==================== 安全性函數 ====================
 
@@ -1561,6 +1675,7 @@
 
     // 篩選功能
     function applyFilters() {
+      resetDisplayCount(); // 重置顯示數量
       const searchText = document.getElementById('searchInput').value.toLowerCase();
       const filterCategory = document.getElementById('filterCategory').value;
       const filterPayer = document.getElementById('filterPayer').value;
@@ -1599,6 +1714,7 @@
     }
 
     function clearFilters() {
+      resetDisplayCount(); // 重置顯示數量
       document.getElementById('searchInput').value = '';
       document.getElementById('filterCategory').value = '';
       document.getElementById('filterPayer').value = '';
@@ -1630,17 +1746,25 @@
       });
 
       const difference = yourTotal - partnerTotal;
+      const total = yourTotal + partnerTotal;
 
-      document.getElementById('yourTotal').textContent = '$' + yourTotal.toLocaleString();
-      document.getElementById('partnerTotal').textContent = '$' + partnerTotal.toLocaleString();
+      document.getElementById('yourTotal').textContent = formatMoney(yourTotal);
+      document.getElementById('partnerTotal').textContent = formatMoney(partnerTotal);
+      document.getElementById('totalExpense').textContent = formatMoney(total);
 
       const balanceEl = document.getElementById('balance');
-      if (difference === 0) {
+      if (allExpenses.length === 0) {
+        balanceEl.textContent = '尚無記錄';
+        balanceEl.style.color = '#999';
+      } else if (difference === 0) {
         balanceEl.textContent = '已結清 ✨';
+        balanceEl.style.color = '';
       } else if (difference > 0) {
-        balanceEl.textContent = '對方欠 $' + Math.abs(difference).toLocaleString();
+        balanceEl.textContent = '換對方付 ' + formatMoney(Math.abs(difference));
+        balanceEl.style.color = '';
       } else {
-        balanceEl.textContent = '你欠 $' + Math.abs(difference).toLocaleString();
+        balanceEl.textContent = '換你付 ' + formatMoney(Math.abs(difference));
+        balanceEl.style.color = '';
       }
 
       // 更新記錄數量
@@ -1649,48 +1773,101 @@
       // 更新儀表板
       updateDashboard(allExpenses);
 
+      // 渲染記錄列表
+      renderExpenseList(expenses);
+    }
+
+    function loadMoreExpenses() {
+      displayedCount += LOAD_MORE_COUNT;
+      renderExpenseList(filteredExpenses);
+    }
+
+    function resetDisplayCount() {
+      displayedCount = 50;
+    }
+
+    function renderExpenseList(expenses) {
       const listEl = document.getElementById('expensesList');
       if (expenses.length === 0) {
         listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>沒有符合條件的記錄</p><p style="font-size: 0.9em; margin-top: 8px;">試試調整篩選條件</p></div>';
         return;
       }
 
-      const html = expenses.slice().reverse().map(function(exp) {
-        const className = exp.payer === '你' ? 'you' : exp.payer === '對方' ? 'partner' : 'both';
-        const splitInfo = exp.payer === '兩人' ? '<br><small>(你: $' + Number(exp.yourPart).toLocaleString() + ' / 對方: $' + Number(exp.partnerPart).toLocaleString() + ')</small>' : '';
+      // 只渲染指定數量的記錄（分頁載入）
+      const reversedExpenses = expenses.slice().reverse();
+      const displayExpenses = reversedExpenses.slice(0, displayedCount);
+      const hasMore = reversedExpenses.length > displayedCount;
 
-        const categoryIcons = {
-          '飲食': '🍜',
-          '居住': '🏠',
-          '交通': '🚗',
-          '娛樂': '🎮',
-          '其他': '📦'
-        };
-        const icon = categoryIcons[exp.category] || '📦';
+      // 按日期分組
+      const groupedByDate = {};
+      displayExpenses.forEach(function(exp) {
+        if (!groupedByDate[exp.date]) {
+          groupedByDate[exp.date] = [];
+        }
+        groupedByDate[exp.date].push(exp);
+      });
 
-        // 使用安全的 HTML 轉義
-        const safeItem = escapeHtml(exp.item);
-        const safeCategory = escapeHtml(exp.category);
-        const safePayer = escapeHtml(exp.payer);
-        const safeDate = escapeHtml(exp.date);
+      const categoryIcons = {
+        '飲食': '🍜',
+        '居住': '🏠',
+        '交通': '🚗',
+        '娛樂': '🎮',
+        '其他': '📦'
+      };
 
-        return '<div class="expense-item ' + className + '">' +
-          '<div class="expense-info">' +
-            '<strong>' + icon + ' ' + safeItem + '</strong>' +
-            '<div style="font-size: 0.85em; color: #666; margin-top: 4px;">' +
-              safeDate + ' · ' + safeCategory + ' · ' + safePayer +
-              splitInfo +
-            '</div>' +
-          '</div>' +
-          '<div style="display: flex; align-items: center; gap: 8px;">' +
-            '<div class="expense-amount">$' + Number(exp.amount).toLocaleString() + '</div>' +
-            '<button class="edit-btn" onclick="editExpense(\'' + exp.id + '\')">編輯</button>' +
-            '<button class="delete-btn" onclick="deleteExpense(\'' + exp.id + '\')">刪除</button>' +
-          '</div>' +
+      let html = '';
+      Object.keys(groupedByDate).forEach(function(date) {
+        const exps = groupedByDate[date];
+        const dayTotal = exps.reduce(function(sum, exp) { return sum + Number(exp.amount); }, 0);
+
+        // 日期標題
+        const dateObj = new Date(date);
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        const weekday = weekdays[dateObj.getDay()];
+
+        html += '<div class="date-header">' +
+          '<span class="date-text">' + date + ' (週' + weekday + ')</span>' +
+          '<span class="date-total">小計 ' + formatMoney(dayTotal) + '</span>' +
         '</div>';
-      }).join('');
+
+        exps.forEach(function(exp) {
+          const className = exp.payer === '你' ? 'you' : exp.payer === '對方' ? 'partner' : 'both';
+          const splitInfo = exp.payer === '兩人' ? '<br><small>(你: ' + formatMoney(Number(exp.yourPart)) + ' / 對方: ' + formatMoney(Number(exp.partnerPart)) + ')</small>' : '';
+          const icon = categoryIcons[exp.category] || '📦';
+
+          // 使用安全的 HTML 轉義
+          const safeItem = escapeHtml(exp.item);
+          const safeCategory = escapeHtml(exp.category);
+          const safePayer = escapeHtml(exp.payer);
+
+          html += '<div class="expense-item ' + className + '">' +
+            '<div class="expense-info">' +
+              '<strong>' + icon + ' ' + safeItem + '</strong>' +
+              '<div style="font-size: 0.82em; color: #6b7280; margin-top: 2px;">' +
+                safeCategory + ' · ' + safePayer +
+                splitInfo +
+              '</div>' +
+            '</div>' +
+            '<div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">' +
+              '<div class="expense-amount">' + formatMoney(Number(exp.amount)) + '</div>' +
+              '<div class="expense-actions">' +
+                '<button class="edit-btn" onclick="editExpense(\'' + exp.id + '\')">編輯</button>' +
+                '<button class="delete-btn" onclick="deleteExpense(\'' + exp.id + '\')">刪除</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        });
+      });
 
       listEl.innerHTML = html;
+
+      // 添加「載入更多」按鈕
+      if (hasMore) {
+        const loadMoreBtn = document.createElement('div');
+        loadMoreBtn.style.cssText = 'text-align: center; padding: 20px;';
+        loadMoreBtn.innerHTML = '<button class="btn" style="background: #667eea; color: white;" onclick="loadMoreExpenses()">載入更多 (' + (reversedExpenses.length - displayedCount) + ' 筆未顯示)</button>';
+        listEl.appendChild(loadMoreBtn);
+      }
     }
 
     // 編輯記錄
@@ -1844,6 +2021,35 @@
 
     function changeDashboardPeriod() {
       currentDashboardPeriod = document.getElementById('dashboardPeriod').value;
+      const customRangeSelector = document.getElementById('customRangeSelector');
+
+      if (currentDashboardPeriod === 'custom') {
+        customRangeSelector.classList.remove('hidden');
+        // 設定預設日期
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        document.getElementById('customStartDate').value = firstDayOfMonth.toISOString().split('T')[0];
+        document.getElementById('customEndDate').value = now.toISOString().split('T')[0];
+      } else {
+        customRangeSelector.classList.add('hidden');
+        updateDashboard(allExpenses);
+      }
+    }
+
+    function applyCustomRange() {
+      const startDate = document.getElementById('customStartDate').value;
+      const endDate = document.getElementById('customEndDate').value;
+
+      if (!startDate || !endDate) {
+        showToast('請選擇開始和結束日期', 'error');
+        return;
+      }
+
+      if (new Date(startDate) > new Date(endDate)) {
+        showToast('開始日期不能晚於結束日期', 'error');
+        return;
+      }
+
       updateDashboard(allExpenses);
     }
 
@@ -1901,6 +2107,38 @@
           return expDate >= thirtyDaysAgo;
         });
         daysCount = 30;
+      } else if (period === 'currentYear') {
+        periodName = '今年';
+        icon = '📆';
+        const currentYear = now.getFullYear();
+        periodExpenses = expenses.filter(function(exp) {
+          const expDate = new Date(exp.date);
+          return expDate.getFullYear() === currentYear;
+        });
+        const yearStart = new Date(currentYear, 0, 1);
+        daysCount = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24)) + 1;
+      } else if (period === 'all') {
+        periodName = '全部';
+        icon = '📚';
+        periodExpenses = expenses;
+        if (expenses.length > 0) {
+          const dates = expenses.map(exp => new Date(exp.date));
+          const minDate = new Date(Math.min(...dates));
+          const maxDate = new Date(Math.max(...dates));
+          daysCount = Math.floor((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
+        } else {
+          daysCount = 1;
+        }
+      } else if (period === 'custom') {
+        periodName = '自訂範圍';
+        icon = '🔍';
+        const startDate = new Date(document.getElementById('customStartDate').value);
+        const endDate = new Date(document.getElementById('customEndDate').value);
+        periodExpenses = expenses.filter(function(exp) {
+          const expDate = new Date(exp.date);
+          return expDate >= startDate && expDate <= endDate;
+        });
+        daysCount = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
       }
 
       // 計算統計數據
@@ -1910,17 +2148,7 @@
       const count = periodExpenses.length;
       const dailyAvg = daysCount > 0 ? total / daysCount : 0;
 
-      // 更新第一張卡片
-      document.getElementById('dashboardIcon1').textContent = icon;
-      document.getElementById('dashboardTitle1').textContent = periodName + '概況';
-      document.getElementById('label1').textContent = '總支出';
-      document.getElementById('value1').textContent = '$' + total.toLocaleString();
-      document.getElementById('label2').textContent = '記錄數';
-      document.getElementById('value2').textContent = count + ' 筆';
-      document.getElementById('label3').textContent = '日均支出';
-      document.getElementById('value3').textContent = '$' + Math.round(dailyAvg).toLocaleString();
-
-      // 計算排行
+      // 計算分類統計
       const categoryStats = {};
       periodExpenses.forEach(function(exp) {
         if (!categoryStats[exp.category]) {
@@ -1928,6 +2156,37 @@
         }
         categoryStats[exp.category] += Number(exp.amount);
       });
+
+      // 生成分類占比文字
+      const categoryIcons = {
+        '飲食': '🍜',
+        '居住': '🏠',
+        '交通': '🚗',
+        '娛樂': '🎮',
+        '其他': '📦'
+      };
+
+      let categoryText = '';
+      if (total > 0) {
+        const sortedCategories = Object.entries(categoryStats).sort((a, b) => b[1] - a[1]);
+        categoryText = sortedCategories.slice(0, 3).map(function([cat, amount]) {
+          const percentage = ((amount / total) * 100).toFixed(0);
+          const icon = categoryIcons[cat] || '📦';
+          return icon + cat + ' ' + percentage + '%';
+        }).join('<br>');
+      } else {
+        categoryText = '-';
+      }
+
+      // 更新第一張卡片
+      document.getElementById('dashboardIcon1').textContent = icon;
+      document.getElementById('dashboardTitle1').textContent = periodName + '概況';
+      document.getElementById('label1').textContent = '總支出';
+      document.getElementById('value1').textContent = formatMoney(total);
+      document.getElementById('label2').textContent = '記錄數';
+      document.getElementById('value2').textContent = count + ' 筆';
+      document.getElementById('label3').textContent = '分類占比';
+      document.getElementById('value3').innerHTML = categoryText;
 
       let topCategory = '飲食';
       let maxCategoryAmount = 0;
@@ -1959,20 +2218,23 @@
         }
       }
 
-      // 更新第二張卡片
-      document.getElementById('dashboardTitle2').textContent = periodName + '排行';
-      document.getElementById('topCategory').textContent = topCategory + ' $' + maxCategoryAmount.toLocaleString();
-      document.getElementById('maxExpense').textContent = '$' + maxExpense.toLocaleString();
-      document.getElementById('topPayer').textContent = topPayer + ' (' + maxPayerCount + '次)';
+      // 第二張卡片是「付款統計」，已經在 updateUI 中更新了
+      // 這裡不需要額外更新
 
-      // 更新第三張卡片（趨勢）
-      document.getElementById('dashboardTitle3').textContent = periodName + '趨勢';
-      document.getElementById('label4').textContent = '總支出';
-      document.getElementById('value4').textContent = '$' + total.toLocaleString();
-      document.getElementById('label5').textContent = '日均支出';
-      document.getElementById('value5').textContent = '$' + Math.round(dailyAvg).toLocaleString();
-      document.getElementById('label6').textContent = '記帳次數';
-      document.getElementById('value6').textContent = count + ' 筆';
+      // 更新第三張卡片（如果存在的話，已合併到比較模式）
+      const card3 = document.getElementById('dashboardTitle3');
+      if (card3) {
+        document.getElementById('dashboardTitle3').textContent = periodName + '趨勢';
+        const label4 = document.getElementById('label4');
+        const label5 = document.getElementById('label5');
+        const label6 = document.getElementById('label6');
+        if (label4) document.getElementById('label4').textContent = '總支出';
+        if (label4) document.getElementById('value4').textContent = formatMoney(total);
+        if (label5) document.getElementById('label5').textContent = '日均支出';
+        if (label5) document.getElementById('value5').textContent = formatMoney(Math.round(dailyAvg));
+        if (label6) document.getElementById('label6').textContent = '記帳次數';
+        if (label6) document.getElementById('value6').textContent = count + ' 筆';
+      }
     }
 
     function updateComparisonDashboard(expenses) {
@@ -2030,15 +2292,44 @@
       const countChange = calculateChange(currentCount, lastCount);
       const avgChange = calculateChange(currentDailyAvg, lastDailyAvg);
 
+      // 計算本月分類占比
+      const currentCategoryStats = {};
+      currentMonthExpenses.forEach(function(exp) {
+        if (!currentCategoryStats[exp.category]) {
+          currentCategoryStats[exp.category] = 0;
+        }
+        currentCategoryStats[exp.category] += Number(exp.amount);
+      });
+
+      const categoryIcons = {
+        '飲食': '🍜',
+        '居住': '🏠',
+        '交通': '🚗',
+        '娛樂': '🎮',
+        '其他': '📦'
+      };
+
+      let categoryText = '';
+      if (currentTotal > 0) {
+        const sortedCategories = Object.entries(currentCategoryStats).sort((a, b) => b[1] - a[1]);
+        categoryText = sortedCategories.slice(0, 3).map(function([cat, amount]) {
+          const percentage = ((amount / currentTotal) * 100).toFixed(0);
+          const icon = categoryIcons[cat] || '📦';
+          return icon + cat + ' ' + percentage + '%';
+        }).join('<br>');
+      } else {
+        categoryText = '-';
+      }
+
       // 更新第一張卡片（本月）
       document.getElementById('dashboardIcon1').textContent = '📅';
       document.getElementById('dashboardTitle1').textContent = '本月數據';
       document.getElementById('label1').textContent = '總支出';
-      document.getElementById('value1').innerHTML = '$' + currentTotal.toLocaleString() + getTrendHTML(totalChange);
+      document.getElementById('value1').innerHTML = formatMoney(currentTotal) + getTrendHTML(totalChange);
       document.getElementById('label2').textContent = '記錄數';
       document.getElementById('value2').innerHTML = currentCount + ' 筆' + getTrendHTML(countChange);
-      document.getElementById('label3').textContent = '日均支出';
-      document.getElementById('value3').innerHTML = '$' + Math.round(currentDailyAvg).toLocaleString() + getTrendHTML(avgChange);
+      document.getElementById('label3').textContent = '分類占比';
+      document.getElementById('value3').innerHTML = categoryText;
 
       // 更新第二張卡片（上月）
       document.getElementById('dashboardTitle2').textContent = '上月數據';
@@ -2103,8 +2394,7 @@
     function addExpense() {
       const item = document.getElementById('item').value.trim();
       const amount = parseFloat(document.getElementById('amount').value);
-      const splitType = document.getElementById('splitType').value;
-      const payer = document.getElementById('payer').value;
+      const paymentMethod = document.getElementById('paymentMethod').value;
       const category = document.getElementById('category').value;
 
       // 前端驗證
@@ -2120,18 +2410,16 @@
 
       let yourPart = 0, partnerPart = 0, displayPayer = '';
 
-      if (splitType === 'single') {
-        if (payer === '你') {
-          yourPart = amount;
-          displayPayer = '你';
-        } else {
-          partnerPart = amount;
-          displayPayer = '對方';
-        }
-      } else if (splitType === 'equal') {
+      if (paymentMethod === 'you') {
+        yourPart = amount;
+        displayPayer = '你';
+      } else if (paymentMethod === 'partner') {
+        partnerPart = amount;
+        displayPayer = '對方';
+      } else if (paymentMethod === 'split') {
         yourPart = partnerPart = amount / 2;
         displayPayer = '兩人';
-      } else {
+      } else if (paymentMethod === 'custom') {
         yourPart = parseFloat(document.getElementById('yourPart').value) || 0;
         partnerPart = parseFloat(document.getElementById('partnerPart').value) || 0;
         if (Math.abs(yourPart + partnerPart - amount) > 0.01) {
@@ -2192,20 +2480,14 @@
         .addExpenseFromWeb(expenseData);
     }
 
-    function updatePayerOptions() {
-      const splitType = document.getElementById('splitType').value;
-      const payerGroup = document.getElementById('payerGroup');
+    function updatePaymentMethod() {
+      const paymentMethod = document.getElementById('paymentMethod').value;
       const customSplit = document.getElementById('customSplit');
 
-      if (splitType === 'single') {
-        payerGroup.classList.remove('hidden');
-        customSplit.classList.add('hidden');
-      } else if (splitType === 'equal') {
-        payerGroup.classList.add('hidden');
-        customSplit.classList.add('hidden');
-      } else {
-        payerGroup.classList.add('hidden');
+      if (paymentMethod === 'custom') {
         customSplit.classList.remove('hidden');
+      } else {
+        customSplit.classList.add('hidden');
       }
     }
 
