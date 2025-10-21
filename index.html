@@ -28,7 +28,8 @@
     }
 
     .container {
-      max-width: 800px;
+      width: 100%; /* 手機上佔滿寬度 */
+      max-width: 800px; /* 桌面最大寬度 */
       margin: 0 auto;
       background: white;
       border-radius: 20px;
@@ -795,7 +796,11 @@
       }
 
       .container {
+        width: 100%; /* 強制佔滿寬度 */
+        max-width: none; /* 移除最大寬度限制 */
         padding: 15px;
+        margin: 0; /* 移除自動置中 */
+        border-radius: 15px; /* 稍微縮小圓角 */
       }
 
       h1 {
@@ -958,7 +963,11 @@
     /* 極小螢幕 - 400px 以下 */
     @media (max-width: 400px) {
       .container {
+        width: 100%;
+        max-width: none;
         padding: 10px;
+        margin: 0;
+        border-radius: 12px;
       }
 
       h1 {
