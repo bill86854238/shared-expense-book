@@ -994,7 +994,27 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <!-- 視窗寬度診斷工具 -->
+  <div id="debugInfo" style="position: fixed; top: 0; left: 0; right: 0; background: #ff0000; color: white; padding: 10px; text-align: center; font-size: 14px; z-index: 99999; font-family: monospace;">
+    螢幕: <span id="screenWidth"></span>px | 視窗: <span id="windowWidth"></span>px | Container: <span id="containerWidth"></span>px
+  </div>
+  <script>
+    function updateDebugInfo() {
+      document.getElementById('screenWidth').textContent = window.screen.width;
+      document.getElementById('windowWidth').textContent = window.innerWidth;
+      var container = document.querySelector('.container');
+      if (container) {
+        document.getElementById('containerWidth').textContent = container.offsetWidth;
+      }
+    }
+    window.addEventListener('load', updateDebugInfo);
+    window.addEventListener('resize', updateDebugInfo);
+    setTimeout(updateDebugInfo, 100);
+    setTimeout(updateDebugInfo, 500);
+    setTimeout(updateDebugInfo, 1000);
+  </script>
+
+  <div class="container" style="margin-top: 50px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h1 style="margin: 0;">💑 共同記帳</h1>
       <div id="userInfo" style="display: flex; align-items: center; gap: 12px;">
