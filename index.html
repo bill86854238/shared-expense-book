@@ -334,7 +334,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      z-index: 1000;
+      z-index: 10000;
       animation: slideInRight 0.3s ease-out;
       max-width: 300px;
     }
@@ -1000,7 +1000,7 @@
       <div class="modal-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <h2 style="margin: 0;">👥 成員管理</h2>
-          <button onclick="closeMembersModal()" style="background: none; border: none; font-size: 1.5em; cursor: pointer;">×</button>
+          <button id="closeMembersBtn" class="close-modal-btn" style="background: none; border: none; font-size: 1.8em; cursor: pointer; color: #999; padding: 5px 10px; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#999'">×</button>
         </div>
 
         <!-- 邀請新成員 -->
@@ -2073,7 +2073,7 @@
       showToast('匯出成功！', 'success');
     }
 
-    // 鍵盤快捷鍵
+    // 鍵盤快捷鍵和事件監聽
     document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('item').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -2096,6 +2096,24 @@
 
       document.getElementById('membersModal').addEventListener('click', function(e) {
         if (e.target === this) {
+          closeMembersModal();
+        }
+      });
+
+      // 成員管理 Modal 關閉按鈕
+      const closeMembersBtn = document.getElementById('closeMembersBtn');
+      if (closeMembersBtn) {
+        closeMembersBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeMembersModal();
+        });
+      }
+
+      // ESC 鍵關閉所有 Modal
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closeChartModal();
           closeMembersModal();
         }
       });
