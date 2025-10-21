@@ -489,6 +489,22 @@
       font-size: 0.85em;
     }
 
+    .edit-btn {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85em;
+      transition: all 0.3s ease;
+    }
+
+    .edit-btn:hover {
+      background: #059669;
+      transform: scale(1.05);
+    }
+
     .delete-btn {
       background: #ef4444;
       color: white;
@@ -497,7 +513,6 @@
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.85em;
-      margin-left: 10px;
       transition: all 0.3s ease;
     }
 
@@ -902,6 +917,7 @@
         font-size: 1.3em; /* 增大金額字體 */
       }
 
+      .edit-btn,
       .delete-btn {
         padding: 10px 16px; /* 增大按鈕 */
         font-size: 0.95em;
@@ -1296,6 +1312,73 @@
       </div>
     </div>
 
+    <!-- 編輯支出 Modal -->
+    <div id="editExpenseModal" class="modal hidden">
+      <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2 style="margin: 0;">✏️ 編輯支出</h2>
+          <button onclick="closeEditExpenseModal()" style="background: none; border: none; font-size: 1.8em; cursor: pointer; color: #999; padding: 5px 10px; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#999'">×</button>
+        </div>
+
+        <div class="form-group">
+          <label>項目</label>
+          <input type="text" id="editItem" placeholder="例如：買菜、外食">
+        </div>
+
+        <div class="form-group">
+          <label>金額</label>
+          <input type="number" id="editAmount" placeholder="0">
+        </div>
+
+        <div class="form-group">
+          <label>付款方式</label>
+          <select id="editSplitType" onchange="updateEditPayerOptions()">
+            <option value="single">單人付款</option>
+            <option value="equal">平分</option>
+            <option value="custom">自訂分帳</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="editPayerGroup">
+          <label>誰付的</label>
+          <select id="editPayer">
+            <option value="你">你</option>
+            <option value="對方">對方</option>
+          </select>
+        </div>
+
+        <div class="form-group hidden" id="editCustomSplit">
+          <label>自訂分帳金額</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <input type="number" id="editYourPart" placeholder="你的部分">
+            </div>
+            <div>
+              <input type="number" id="editPartnerPart" placeholder="對方的部分">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>分類</label>
+          <select id="editCategory">
+            <option value="飲食">🍜 飲食</option>
+            <option value="居住">🏠 居住</option>
+            <option value="交通">🚗 交通</option>
+            <option value="娛樂">🎮 娛樂</option>
+            <option value="其他">📦 其他</option>
+          </select>
+        </div>
+
+        <input type="hidden" id="editExpenseId">
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button class="btn btn-primary" onclick="updateExpense()" style="flex: 1;">💾 儲存變更</button>
+          <button class="btn" onclick="closeEditExpenseModal()" style="flex: 1; background: #e5e7eb; color: #333;">取消</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 成員管理 Modal -->
     <div id="membersModal" class="modal hidden">
       <div class="modal-content">
@@ -1599,14 +1682,145 @@
               splitInfo +
             '</div>' +
           '</div>' +
-          '<div style="display: flex; align-items: center;">' +
+          '<div style="display: flex; align-items: center; gap: 8px;">' +
             '<div class="expense-amount">$' + Number(exp.amount).toLocaleString() + '</div>' +
+            '<button class="edit-btn" onclick="editExpense(\'' + exp.id + '\')">編輯</button>' +
             '<button class="delete-btn" onclick="deleteExpense(\'' + exp.id + '\')">刪除</button>' +
           '</div>' +
         '</div>';
       }).join('');
 
       listEl.innerHTML = html;
+    }
+
+    // 編輯記錄
+    function editExpense(id) {
+      // 從 allExpenses 找到該筆記錄
+      const expense = allExpenses.find(function(exp) {
+        return String(exp.id) === String(id);
+      });
+
+      if (!expense) {
+        showToast('找不到該筆記錄', 'error');
+        return;
+      }
+
+      // 填入編輯表單
+      document.getElementById('editExpenseId').value = expense.id;
+      document.getElementById('editItem').value = expense.item;
+      document.getElementById('editAmount').value = expense.amount;
+      document.getElementById('editCategory').value = expense.category;
+
+      // 判斷付款方式
+      if (expense.payer === '兩人') {
+        // 檢查是否為平分
+        if (Math.abs(expense.yourPart - expense.partnerPart) < 0.01) {
+          document.getElementById('editSplitType').value = 'equal';
+          document.getElementById('editPayerGroup').classList.add('hidden');
+          document.getElementById('editCustomSplit').classList.add('hidden');
+        } else {
+          // 自訂分帳
+          document.getElementById('editSplitType').value = 'custom';
+          document.getElementById('editYourPart').value = expense.yourPart;
+          document.getElementById('editPartnerPart').value = expense.partnerPart;
+          document.getElementById('editPayerGroup').classList.add('hidden');
+          document.getElementById('editCustomSplit').classList.remove('hidden');
+        }
+      } else {
+        // 單人付款
+        document.getElementById('editSplitType').value = 'single';
+        document.getElementById('editPayer').value = expense.payer;
+        document.getElementById('editPayerGroup').classList.remove('hidden');
+        document.getElementById('editCustomSplit').classList.add('hidden');
+      }
+
+      // 開啟 Modal
+      document.getElementById('editExpenseModal').classList.remove('hidden');
+    }
+
+    function closeEditExpenseModal() {
+      document.getElementById('editExpenseModal').classList.add('hidden');
+    }
+
+    function updateEditPayerOptions() {
+      const splitType = document.getElementById('editSplitType').value;
+      const payerGroup = document.getElementById('editPayerGroup');
+      const customSplit = document.getElementById('editCustomSplit');
+
+      if (splitType === 'single') {
+        payerGroup.classList.remove('hidden');
+        customSplit.classList.add('hidden');
+      } else if (splitType === 'equal') {
+        payerGroup.classList.add('hidden');
+        customSplit.classList.add('hidden');
+      } else {
+        payerGroup.classList.add('hidden');
+        customSplit.classList.remove('hidden');
+      }
+    }
+
+    function updateExpense() {
+      const id = document.getElementById('editExpenseId').value;
+      const item = document.getElementById('editItem').value.trim();
+      const amount = parseFloat(document.getElementById('editAmount').value);
+      const splitType = document.getElementById('editSplitType').value;
+      const payer = document.getElementById('editPayer').value;
+      const category = document.getElementById('editCategory').value;
+
+      // 前端驗證
+      if (!validateInput(item, 'text', 1, 100)) {
+        showToast('項目名稱必須是 1-100 字元', 'error');
+        return;
+      }
+
+      if (!validateInput(amount, 'number', 0.01, 9999999)) {
+        showToast('請輸入有效金額（0.01 到 9,999,999）', 'error');
+        return;
+      }
+
+      let yourPart = 0, partnerPart = 0, displayPayer = '';
+
+      if (splitType === 'single') {
+        if (payer === '你') {
+          yourPart = amount;
+          displayPayer = '你';
+        } else {
+          partnerPart = amount;
+          displayPayer = '對方';
+        }
+      } else if (splitType === 'equal') {
+        yourPart = partnerPart = amount / 2;
+        displayPayer = '兩人';
+      } else {
+        yourPart = parseFloat(document.getElementById('editYourPart').value) || 0;
+        partnerPart = parseFloat(document.getElementById('editPartnerPart').value) || 0;
+        if (Math.abs(yourPart + partnerPart - amount) > 0.01) {
+          showToast('自訂分帳金額總和必須等於總金額', 'error');
+          return;
+        }
+        displayPayer = '兩人';
+      }
+
+      const updatedData = {
+        id: id,
+        item: item,
+        amount: amount,
+        payer: displayPayer,
+        yourPart: yourPart,
+        partnerPart: partnerPart,
+        category: category
+      };
+
+      google.script.run
+        .withSuccessHandler(function() {
+          showToast('更新成功！ ✨', 'success');
+          closeEditExpenseModal();
+          loadData();
+        })
+        .withFailureHandler(function(error) {
+          showError(error);
+        })
+        .updateExpenseById(updatedData);
     }
 
     // 刪除記錄

@@ -456,6 +456,89 @@ function getStatisticsFromWeb(startDate, endDate) {
 }
 
 /**
+ * 供網頁呼叫 - 更新支出記錄
+ */
+function updateExpenseById(updatedData) {
+  // 檢查頻率限制
+  checkRateLimit('updateExpense');
+
+  // 權限檢查
+  const currentUser = Session.getActiveUser().getEmail();
+  const permission = checkUserPermission();
+
+  if (!permission.allowed) {
+    throw new Error('無權限操作');
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const owner = ss.getOwner().getEmail();
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+  const data = sheet.getDataRange().getValues();
+
+  // 只有管理員可以編輯記錄
+  if (currentUser !== owner) {
+    logAction('更新支出失敗', `非管理員嘗試更新 ID: ${updatedData.id}`);
+    throw new Error('只有管理員可以編輯記錄');
+  }
+
+  // 驗證輸入
+  if (!validateText(updatedData.item, 100)) {
+    throw new Error('項目名稱無效（必須是 1-100 字元）');
+  }
+
+  if (!validateNumber(updatedData.amount, 0.01, 9999999)) {
+    throw new Error('金額無效（必須介於 0.01 到 9,999,999）');
+  }
+
+  if (!validateNumber(updatedData.yourPart, 0, updatedData.amount)) {
+    throw new Error('你的部分金額無效');
+  }
+
+  if (!validateNumber(updatedData.partnerPart, 0, updatedData.amount)) {
+    throw new Error('對方的部分金額無效');
+  }
+
+  // 檢查金額合理性
+  if (Math.abs((updatedData.yourPart + updatedData.partnerPart) - updatedData.amount) > 0.01) {
+    throw new Error('分帳金額總和必須等於總金額');
+  }
+
+  // 找到 ID 欄位（第 10 欄）並更新
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][9]) === String(updatedData.id)) {
+      const oldItem = data[i][1];
+      const oldAmount = data[i][2];
+
+      // 過濾和轉義輸入
+      const safeItem = escapeHtml(updatedData.item.trim());
+      const safeCategory = escapeHtml(updatedData.category);
+
+      // 更新資料（保留原有的日期和 ID）
+      sheet.getRange(i + 1, 2).setValue(safeItem);           // 項目
+      sheet.getRange(i + 1, 3).setValue(updatedData.amount); // 金額
+      sheet.getRange(i + 1, 4).setValue(updatedData.payer);  // 付款人
+      sheet.getRange(i + 1, 5).setValue(updatedData.yourPart);     // 你的部分
+      sheet.getRange(i + 1, 6).setValue(updatedData.partnerPart);  // 對方的部分
+      sheet.getRange(i + 1, 7).setValue(safeCategory);       // 分類
+
+      // 更新背景顏色
+      let color = CONFIG.COLORS.BOTH;
+      if (updatedData.payer === '你') color = CONFIG.COLORS.YOUR;
+      else if (updatedData.payer === '對方') color = CONFIG.COLORS.PARTNER;
+      sheet.getRange(i + 1, 1, 1, 10).setBackground(color);
+
+      // 記錄日誌
+      logAction('更新支出', `ID: ${updatedData.id}, 原: ${oldItem}($${oldAmount}) → 新: ${safeItem}($${updatedData.amount})`);
+
+      Logger.log(`已更新記錄 ID: ${updatedData.id}`);
+      return true;
+    }
+  }
+
+  throw new Error('找不到該記錄');
+}
+
+/**
  * 供網頁呼叫 - 刪除支出記錄
  */
 function deleteExpenseById(id) {
