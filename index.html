@@ -1207,13 +1207,26 @@
           <option value="you">我</option>
           <option value="partner">對方</option>
           <option value="each">各付各的</option>
-          <option value="custom">自訂</option>
+          <option value="unequal">不等額墊付</option>
         </select>
       </div>
 
-      <div class="form-group hidden" id="customPayerField">
-        <label>自訂付款人</label>
-        <input type="text" id="customPayer" placeholder="輸入付款人名稱">
+      <!-- 不等額墊付的金額輸入 -->
+      <div class="form-group hidden" id="unequalPaymentFields">
+        <label>實際付款金額</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="font-size: 0.9em; color: #666; font-weight: normal;">你付了</label>
+            <input type="number" id="yourActualPaid" placeholder="0" min="0" step="0.01">
+          </div>
+          <div>
+            <label style="font-size: 0.9em; color: #666; font-weight: normal;">對方付了</label>
+            <input type="number" id="partnerActualPaid" placeholder="0" min="0" step="0.01">
+          </div>
+        </div>
+        <div style="margin-top: 8px; font-size: 0.85em; color: #666;">
+          💡 提示：兩者總和必須等於上方金額
+        </div>
       </div>
 
       <div class="form-group">
@@ -1578,10 +1591,13 @@
 
   <script>
     // 全局變數
-    let allExpenses = [];
-    let filteredExpenses = [];
-    let displayedCount = 50; // 預設顯示 50 筆
-    const LOAD_MORE_COUNT = 50; // 每次載入 50 筆
+    let allExpenses = []; // 儲存所有記錄（用於儀表板和統計）
+    let displayedExpenses = []; // 目前顯示的記錄（分頁載入）
+    let currentOffset = 0; // 目前載入的 offset
+    let totalCount = 0; // 總記錄數
+    let hasMoreData = false; // 是否還有更多資料
+    let isLoading = false; // 是否正在載入
+    const PAGE_SIZE = 50; // 每次載入 50 筆
 
     // ==================== 工具函數 ====================
 
@@ -1675,14 +1691,49 @@
     }
 
     function loadData() {
+      // 載入第一頁資料（支出記錄頁面）
+      loadPagedExpenses(0);
+
+      // 載入所有資料（用於儀表板和統計）
       google.script.run
         .withSuccessHandler(function(expenses) {
           allExpenses = expenses;
-          filteredExpenses = expenses;
-          updateUI(expenses);
+          updateDashboard(allExpenses);
         })
         .withFailureHandler(showError)
-        .getExpenses();
+        .getAllExpenses();
+    }
+
+    /**
+     * 載入分頁資料
+     */
+    function loadPagedExpenses(offset) {
+      if (isLoading) return;
+      isLoading = true;
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          isLoading = false;
+
+          if (offset === 0) {
+            // 第一頁：清空並顯示
+            displayedExpenses = result.expenses;
+          } else {
+            // 後續頁：累加
+            displayedExpenses = displayedExpenses.concat(result.expenses);
+          }
+
+          totalCount = result.total;
+          hasMoreData = result.hasMore;
+          currentOffset = offset + result.expenses.length;
+
+          updateUI(displayedExpenses);
+        })
+        .withFailureHandler(function(error) {
+          isLoading = false;
+          showError(error);
+        })
+        .getExpenses({ offset: offset, limit: PAGE_SIZE });
     }
 
     // 載入使用者資訊
@@ -1743,16 +1794,15 @@
       }
     }
 
-    // 篩選功能
+    // 篩選功能（在顯示的記錄中篩選）
     function applyFilters() {
-      resetDisplayCount(); // 重置顯示數量
       const searchText = document.getElementById('searchInput').value.toLowerCase();
       const filterCategory = document.getElementById('filterCategory').value;
       const filterPayer = document.getElementById('filterPayer').value;
       const startDate = document.getElementById('startDate').value;
       const endDate = document.getElementById('endDate').value;
 
-      filteredExpenses = allExpenses.filter(function(exp) {
+      const filtered = displayedExpenses.filter(function(exp) {
         // 搜尋文字
         if (searchText && !exp.item.toLowerCase().includes(searchText)) {
           return false;
@@ -1779,20 +1829,18 @@
         return true;
       });
 
-      updateUI(filteredExpenses);
+      renderExpenseList(filtered);
       showToast('已套用篩選條件', 'success');
     }
 
     function clearFilters() {
-      resetDisplayCount(); // 重置顯示數量
       document.getElementById('searchInput').value = '';
       document.getElementById('filterCategory').value = '';
       document.getElementById('filterPayer').value = '';
       document.getElementById('startDate').value = '';
       document.getElementById('endDate').value = '';
 
-      filteredExpenses = allExpenses;
-      updateUI(allExpenses);
+      renderExpenseList(displayedExpenses);
       showToast('已清除篩選', 'success');
     }
 
@@ -1806,54 +1854,85 @@
     });
 
     function updateUI(expenses) {
-      let yourTotal = 0;
-      let partnerTotal = 0;
+      let yourShouldPay = 0;    // 你應該負擔的總金額
+      let partnerShouldPay = 0; // 對方應該負擔的總金額
+      let yourActualPaid = 0;   // 你實際付出的總金額
+      let partnerActualPaid = 0; // 對方實際付出的總金額
 
       // 計算總計（使用全部資料）
       allExpenses.forEach(function(exp) {
-        yourTotal += Number(exp.yourPart) || 0;
-        partnerTotal += Number(exp.partnerPart) || 0;
+        // 應該負擔的金額
+        yourShouldPay += Number(exp.yourPart) || 0;
+        partnerShouldPay += Number(exp.partnerPart) || 0;
+
+        // 實際付出的金額
+        // 優先使用資料庫中記錄的實際付款金額（新功能）
+        if (exp.yourActualPaid !== null && exp.yourActualPaid !== undefined &&
+            exp.partnerActualPaid !== null && exp.partnerActualPaid !== undefined) {
+          // 使用資料庫中的實際付款金額（支援不等額墊付）
+          yourActualPaid += Number(exp.yourActualPaid) || 0;
+          partnerActualPaid += Number(exp.partnerActualPaid) || 0;
+        } else {
+          // 向下相容：舊資料根據 actualPayer 推算
+          const amount = Number(exp.amount) || 0;
+          const actualPayer = exp.actualPayer || exp.payer;
+
+          if (actualPayer === '你') {
+            // 我先付了全額
+            yourActualPaid += amount;
+          } else if (actualPayer === '對方') {
+            // 對方先付了全額
+            partnerActualPaid += amount;
+          } else if (actualPayer === '各自') {
+            // 各付各的：按照應負擔金額付
+            yourActualPaid += Number(exp.yourPart) || 0;
+            partnerActualPaid += Number(exp.partnerPart) || 0;
+          }
+          // 其他情況（不等額等）：不計入
+        }
       });
 
-      const difference = yourTotal - partnerTotal;
-      const total = yourTotal + partnerTotal;
+      // 結算邏輯：我實際付的 - 我應該付的 = 對方欠我的
+      const yourBalance = yourActualPaid - yourShouldPay;
+      const partnerBalance = partnerActualPaid - partnerShouldPay;
 
-      document.getElementById('yourTotal').textContent = formatMoney(yourTotal);
-      document.getElementById('partnerTotal').textContent = formatMoney(partnerTotal);
+      const total = yourShouldPay + partnerShouldPay;
+
+      document.getElementById('yourTotal').textContent = formatMoney(yourShouldPay);
+      document.getElementById('partnerTotal').textContent = formatMoney(partnerShouldPay);
       document.getElementById('totalExpense').textContent = formatMoney(total);
 
       const balanceEl = document.getElementById('balance');
       if (allExpenses.length === 0) {
         balanceEl.textContent = '尚無記錄';
         balanceEl.style.color = '#999';
-      } else if (difference === 0) {
+      } else if (Math.abs(yourBalance) < 0.01) {
+        // 已結清（誤差在 0.01 以內視為結清）
         balanceEl.textContent = '已結清 ✨';
         balanceEl.style.color = '';
-      } else if (difference > 0) {
-        balanceEl.textContent = '換對方付 ' + formatMoney(Math.abs(difference));
+      } else if (yourBalance > 0) {
+        // 我付得比我該付的多 → 對方欠我
+        balanceEl.textContent = '對方欠你 ' + formatMoney(Math.abs(yourBalance));
         balanceEl.style.color = '';
       } else {
-        balanceEl.textContent = '換你付 ' + formatMoney(Math.abs(difference));
+        // 我付得比我該付的少 → 我欠對方
+        balanceEl.textContent = '你欠對方 ' + formatMoney(Math.abs(yourBalance));
         balanceEl.style.color = '';
       }
 
-      // 更新記錄數量
-      document.getElementById('recordCount').textContent = '共 ' + expenses.length + ' 筆記錄';
-
-      // 更新儀表板
-      updateDashboard(allExpenses);
+      // 更新記錄數量（顯示總數）
+      document.getElementById('recordCount').textContent = '共 ' + totalCount + ' 筆記錄（已載入 ' + displayedExpenses.length + ' 筆）';
 
       // 渲染記錄列表
       renderExpenseList(expenses);
     }
 
+    /**
+     * 載入更多記錄
+     */
     function loadMoreExpenses() {
-      displayedCount += LOAD_MORE_COUNT;
-      renderExpenseList(filteredExpenses);
-    }
-
-    function resetDisplayCount() {
-      displayedCount = 50;
+      if (isLoading || !hasMoreData) return;
+      loadPagedExpenses(currentOffset);
     }
 
     function renderExpenseList(expenses) {
@@ -1863,14 +1942,9 @@
         return;
       }
 
-      // 只渲染指定數量的記錄（分頁載入）
-      const reversedExpenses = expenses.slice().reverse();
-      const displayExpenses = reversedExpenses.slice(0, displayedCount);
-      const hasMore = reversedExpenses.length > displayedCount;
-
       // 按日期分組
       const groupedByDate = {};
-      displayExpenses.forEach(function(exp) {
+      expenses.forEach(function(exp) {
         if (!groupedByDate[exp.date]) {
           groupedByDate[exp.date] = [];
         }
@@ -1931,19 +2005,55 @@
 
       listEl.innerHTML = html;
 
-      // 添加「載入更多」按鈕
-      if (hasMore) {
+      // 添加「載入更多」按鈕（使用後端分頁）
+      if (hasMoreData) {
         const loadMoreBtn = document.createElement('div');
+        loadMoreBtn.id = 'loadMoreBtn';
         loadMoreBtn.style.cssText = 'text-align: center; padding: 20px;';
-        loadMoreBtn.innerHTML = '<button class="btn" style="background: #667eea; color: white;" onclick="loadMoreExpenses()">載入更多 (' + (reversedExpenses.length - displayedCount) + ' 筆未顯示)</button>';
+        const remainingCount = totalCount - displayedExpenses.length;
+        loadMoreBtn.innerHTML = '<button class="btn" style="background: #667eea; color: white;" onclick="loadMoreExpenses()">' +
+          (isLoading ? '載入中...' : '載入更多 (' + remainingCount + ' 筆未顯示)') +
+          '</button>';
         listEl.appendChild(loadMoreBtn);
+
+        // 使用 IntersectionObserver 實現滾動自動載入
+        setupAutoLoad();
       }
+    }
+
+    /**
+     * 設置滾動自動載入
+     */
+    function setupAutoLoad() {
+      // 移除舊的 observer
+      if (window.loadMoreObserver) {
+        window.loadMoreObserver.disconnect();
+      }
+
+      const loadMoreBtn = document.getElementById('loadMoreBtn');
+      if (!loadMoreBtn) return;
+
+      // 建立新的 IntersectionObserver
+      window.loadMoreObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          // 當按鈕進入視窗且沒有在載入中
+          if (entry.isIntersecting && !isLoading && hasMoreData) {
+            loadMoreExpenses();
+          }
+        });
+      }, {
+        root: null, // 使用瀏覽器視窗
+        rootMargin: '100px', // 提前 100px 開始載入
+        threshold: 0.1
+      });
+
+      window.loadMoreObserver.observe(loadMoreBtn);
     }
 
     // 編輯記錄
     function editExpense(id) {
-      // 從 allExpenses 找到該筆記錄
-      const expense = allExpenses.find(function(exp) {
+      // 從 displayedExpenses 找到該筆記錄
+      const expense = displayedExpenses.find(function(exp) {
         return String(exp.id) === String(id);
       });
 
@@ -2477,23 +2587,43 @@
         return;
       }
 
-      // 取得誰付錢
+      // 取得誰付錢和實際付款金額
       const actualPayerValue = document.getElementById('actualPayer').value;
       let actualPayer = '';
+      let yourActualPaidAmount = 0;
+      let partnerActualPaidAmount = 0;
+
       if (actualPayerValue === 'you') {
         actualPayer = '你';
+        yourActualPaidAmount = amount;
+        partnerActualPaidAmount = 0;
       } else if (actualPayerValue === 'partner') {
         actualPayer = '對方';
+        yourActualPaidAmount = 0;
+        partnerActualPaidAmount = amount;
       } else if (actualPayerValue === 'each') {
         actualPayer = '各自';
-      } else if (actualPayerValue === 'custom') {
-        actualPayer = document.getElementById('customPayer').value.trim();
-        if (!actualPayer) {
-          showToast('請輸入自訂付款人名稱', 'error');
+        // 各自付的金額稍後根據負擔金額設定
+      } else if (actualPayerValue === 'unequal') {
+        // 不等額墊付
+        actualPayer = '不等額';
+        yourActualPaidAmount = parseFloat(document.getElementById('yourActualPaid').value) || 0;
+        partnerActualPaidAmount = parseFloat(document.getElementById('partnerActualPaid').value) || 0;
+
+        // 驗證
+        if (yourActualPaidAmount < 0 || partnerActualPaidAmount < 0) {
+          showToast('實際付款金額不能為負數', 'error');
           return;
         }
-        if (!validateInput(actualPayer, 'text', 1, 50)) {
-          showToast('付款人名稱必須是 1-50 字元', 'error');
+
+        const totalPaid = yourActualPaidAmount + partnerActualPaidAmount;
+        if (Math.abs(totalPaid - amount) > 0.01) {
+          showToast('實際付款總和（' + totalPaid + '）必須等於總金額（' + amount + '）', 'error');
+          return;
+        }
+
+        if (yourActualPaidAmount === 0 && partnerActualPaidAmount === 0) {
+          showToast('請填入實際付款金額', 'error');
           return;
         }
       }
@@ -2579,6 +2709,12 @@
         partnerPart = amount;
       }
 
+      // 如果是「各自」付款，實際付款金額等於負擔金額
+      if (actualPayerValue === 'each') {
+        yourActualPaidAmount = yourPart;
+        partnerActualPaidAmount = partnerPart;
+      }
+
       // 設定 displayPayer
       if (payForYou && payForPartner) {
         displayPayer = '兩人';
@@ -2602,9 +2738,11 @@
         item: item,
         amount: amount,
         payer: displayPayer,
-        actualPayer: actualPayer,  // 新增：誰先付錢
-        yourPart: yourPart,
-        partnerPart: partnerPart,
+        actualPayer: actualPayer,  // 誰先付錢
+        yourPart: yourPart,  // 你應該負擔的金額
+        partnerPart: partnerPart,  // 對方應該負擔的金額
+        yourActualPaid: yourActualPaidAmount,  // 你實際付出的金額
+        partnerActualPaid: partnerActualPaidAmount,  // 對方實際付出的金額
         category: category,
         isRecurring: isRecurring,
         recurringDay: recurringDay
@@ -2641,17 +2779,17 @@
     }
 
     function updatePaymentMethod() {
-      const actualPayerSelect = document.getElementById('actualPayer').value;
-      const customPayerField = document.getElementById('customPayerField');
+      const actualPayerValue = document.getElementById('actualPayer').value;
+      const unequalPaymentFields = document.getElementById('unequalPaymentFields');
       const payForYou = document.getElementById('payForYou').checked;
       const payForPartner = document.getElementById('payForPartner').checked;
       const splitMethodGroup = document.getElementById('splitMethodGroup');
 
-      // 顯示/隱藏自訂付款人欄位
-      if (actualPayerSelect === 'custom') {
-        customPayerField.classList.remove('hidden');
+      // 顯示/隱藏不等額墊付欄位
+      if (actualPayerValue === 'unequal') {
+        unequalPaymentFields.classList.remove('hidden');
       } else {
-        customPayerField.classList.add('hidden');
+        unequalPaymentFields.classList.add('hidden');
       }
 
       // 顯示/隱藏分帳方式選擇（當勾選多個成員時）

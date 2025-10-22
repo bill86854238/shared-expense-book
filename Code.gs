@@ -61,7 +61,7 @@ function createExpensesSheet(ss) {
     // 只有不存在時才建立新的
     sheet = ss.insertSheet(CONFIG.SHEET_NAMES.EXPENSES);
 
-    const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '分類', '是否週期', '週期日期', 'ID'];
+    const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '你實付', '對方實付', '分類', '是否週期', '週期日期', 'ID'];
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
     sheet.getRange(1, 1, 1, headers.length)
@@ -70,7 +70,7 @@ function createExpensesSheet(ss) {
       .setFontWeight('bold')
       .setHorizontalAlignment('center');
 
-    const widths = [100, 150, 100, 100, 100, 100, 100, 80, 80, 80, 120];
+    const widths = [100, 150, 100, 100, 100, 100, 100, 100, 100, 80, 80, 80, 120];
     widths.forEach((width, i) => sheet.setColumnWidth(i + 1, width));
 
     sheet.setFrozenRows(1);
@@ -141,7 +141,7 @@ function createSettingsSheet(ss) {
 
 // ==================== 核心功能 ====================
 
-function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay) {
+function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid) {
   // 檢查頻率限制
   checkRateLimit('addExpense');
 
@@ -175,6 +175,27 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
   const safeItem = escapeHtml(item.trim());
   const safeCategory = escapeHtml(category);
 
+  // 向下相容：如果沒有提供實際付款金額，根據 actualPayer 推算
+  let finalYourActualPaid = yourActualPaid;
+  let finalPartnerActualPaid = partnerActualPaid;
+
+  if (yourActualPaid === null || yourActualPaid === undefined) {
+    if (actualPayer === '你') {
+      finalYourActualPaid = amount;
+      finalPartnerActualPaid = 0;
+    } else if (actualPayer === '對方') {
+      finalYourActualPaid = 0;
+      finalPartnerActualPaid = amount;
+    } else if (actualPayer === '各自') {
+      finalYourActualPaid = yourPart;
+      finalPartnerActualPaid = partnerPart;
+    } else {
+      // 其他情況（例如舊資料）
+      finalYourActualPaid = 0;
+      finalPartnerActualPaid = 0;
+    }
+  }
+
   const row = [
     Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
     safeItem,
@@ -183,6 +204,8 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
     actualPayer || payer,  // 實際付款人，向下相容
     yourPart,
     partnerPart,
+    finalYourActualPaid,  // 你實際付出的金額
+    finalPartnerActualPaid,  // 對方實際付出的金額
     safeCategory,
     isRecurring || false,
     recurringDay || '',
@@ -192,13 +215,13 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
   sheet.appendRow(row);
 
   const lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow, 1, 1, 11).setHorizontalAlignment('center');
+  sheet.getRange(lastRow, 1, 1, 13).setHorizontalAlignment('center');
 
   let color = CONFIG.COLORS.BOTH;
   if (payer === '你') color = CONFIG.COLORS.YOUR;
   else if (payer === '對方') color = CONFIG.COLORS.PARTNER;
 
-  sheet.getRange(lastRow, 1, 1, 11).setBackground(color);
+  sheet.getRange(lastRow, 1, 1, 13).setBackground(color);
 
   // 記錄日誌
   logAction('新增支出', `項目: ${safeItem}, 金額: ${amount}, 付款人: ${payer}`);
@@ -416,6 +439,89 @@ function getExpenses(filters) {
   // 檢查工作表是否存在
   if (!sheet) {
     Logger.log('支出記錄工作表不存在');
+    return { expenses: [], total: 0, hasMore: false };
+  }
+
+  const data = sheet.getDataRange().getValues();
+
+  // 如果只有標題列，返回空陣列
+  if (data.length <= 1) {
+    Logger.log('沒有支出記錄');
+    return { expenses: [], total: 0, hasMore: false };
+  }
+
+  // 解析分頁參數
+  const offset = (filters && filters.offset) ? Number(filters.offset) : 0;
+  const limit = (filters && filters.limit) ? Number(filters.limit) : 50;
+
+  const allExpenses = [];
+  for (let i = 1; i < data.length; i++) {
+    // 跳過空白列
+    if (!data[i][1]) {
+      continue;
+    }
+
+    // 格式化日期（處理 Date 物件或字串）
+    let dateStr = data[i][0];
+    if (dateStr instanceof Date) {
+      dateStr = Utilities.formatDate(dateStr, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    } else if (typeof dateStr === 'string') {
+      // 已經是字串，保持原樣
+    } else {
+      // 其他情況，使用當前日期
+      dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    }
+
+    allExpenses.push({
+      date: dateStr,
+      item: String(data[i][1] || ''),
+      amount: Number(data[i][2]) || 0,
+      payer: String(data[i][3] || ''),
+      actualPayer: String(data[i][4] || data[i][3] || ''),  // 實際付款人，向下相容
+      yourPart: Number(data[i][5]) || 0,
+      partnerPart: Number(data[i][6]) || 0,
+      yourActualPaid: Number(data[i][7]) >= 0 ? Number(data[i][7]) : null,  // 你實際付出的金額，向下相容
+      partnerActualPaid: Number(data[i][8]) >= 0 ? Number(data[i][8]) : null,  // 對方實際付出的金額，向下相容
+      category: String(data[i][9] || '其他'),
+      isRecurring: Boolean(data[i][10]),
+      recurringDay: data[i][11] || '',
+      id: String(data[i][12] || '')
+    });
+  }
+
+  // 按日期排序（新到舊）
+  allExpenses.sort(function(a, b) {
+    return b.date.localeCompare(a.date);
+  });
+
+  const total = allExpenses.length;
+  const expenses = allExpenses.slice(offset, offset + limit);
+  const hasMore = (offset + limit) < total;
+
+  Logger.log('成功載入 ' + expenses.length + ' 筆支出記錄（共 ' + total + ' 筆，offset: ' + offset + '）');
+
+  return {
+    expenses: expenses,
+    total: total,
+    hasMore: hasMore
+  };
+}
+
+/**
+ * 取得所有支出記錄（不分頁，用於儀表板和統計）
+ */
+function getAllExpenses() {
+  // 權限驗證
+  const permission = checkUserPermission();
+  if (!permission.allowed) {
+    throw new Error('無權限訪問');
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+  // 檢查工作表是否存在
+  if (!sheet) {
+    Logger.log('支出記錄工作表不存在');
     return [];
   }
 
@@ -450,17 +556,19 @@ function getExpenses(filters) {
       item: String(data[i][1] || ''),
       amount: Number(data[i][2]) || 0,
       payer: String(data[i][3] || ''),
-      actualPayer: String(data[i][4] || data[i][3] || ''),  // 新增：實際付款人，向下相容
+      actualPayer: String(data[i][4] || data[i][3] || ''),  // 實際付款人，向下相容
       yourPart: Number(data[i][5]) || 0,
       partnerPart: Number(data[i][6]) || 0,
-      category: String(data[i][7] || '其他'),
-      isRecurring: Boolean(data[i][8]),
-      recurringDay: data[i][9] || '',
-      id: String(data[i][10] || '')
+      yourActualPaid: Number(data[i][7]) >= 0 ? Number(data[i][7]) : null,  // 你實際付出的金額，向下相容
+      partnerActualPaid: Number(data[i][8]) >= 0 ? Number(data[i][8]) : null,  // 對方實際付出的金額，向下相容
+      category: String(data[i][9] || '其他'),
+      isRecurring: Boolean(data[i][10]),
+      recurringDay: data[i][11] || '',
+      id: String(data[i][12] || '')
     });
   }
 
-  Logger.log('成功載入 ' + expenses.length + ' 筆支出記錄');
+  Logger.log('成功載入所有 ' + expenses.length + ' 筆支出記錄');
   return expenses;
 }
 
@@ -469,12 +577,14 @@ function addExpenseFromWeb(expenseData) {
     expenseData.item,
     expenseData.amount,
     expenseData.payer,
-    expenseData.actualPayer || expenseData.payer,  // 新增：實際付款人，向下相容
+    expenseData.actualPayer || expenseData.payer,  // 實際付款人，向下相容
     expenseData.yourPart,
     expenseData.partnerPart,
     expenseData.category,
     expenseData.isRecurring,
-    expenseData.recurringDay
+    expenseData.recurringDay,
+    expenseData.yourActualPaid || null,  // 你實際付出的金額
+    expenseData.partnerActualPaid || null  // 對方實際付出的金額
   );
 }
 
@@ -530,9 +640,9 @@ function updateExpenseById(updatedData) {
     throw new Error('分帳金額總和必須等於總金額');
   }
 
-  // 找到 ID 欄位（第 10 欄）並更新
+  // 找到 ID 欄位（第 13 欄）並更新
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][9]) === String(updatedData.id)) {
+    if (String(data[i][12]) === String(updatedData.id)) {
       const oldItem = data[i][1];
       const oldAmount = data[i][2];
 
@@ -544,15 +654,17 @@ function updateExpenseById(updatedData) {
       sheet.getRange(i + 1, 2).setValue(safeItem);           // 項目
       sheet.getRange(i + 1, 3).setValue(updatedData.amount); // 金額
       sheet.getRange(i + 1, 4).setValue(updatedData.payer);  // 付款人
-      sheet.getRange(i + 1, 5).setValue(updatedData.yourPart);     // 你的部分
-      sheet.getRange(i + 1, 6).setValue(updatedData.partnerPart);  // 對方的部分
-      sheet.getRange(i + 1, 7).setValue(safeCategory);       // 分類
+      // 第 5 欄是「實際付款人」，編輯功能暫不更新
+      sheet.getRange(i + 1, 6).setValue(updatedData.yourPart);     // 你的部分
+      sheet.getRange(i + 1, 7).setValue(updatedData.partnerPart);  // 對方的部分
+      // 第 8, 9 欄是「你實付」、「對方實付」，編輯功能暫不更新
+      sheet.getRange(i + 1, 10).setValue(safeCategory);       // 分類
 
       // 更新背景顏色
       let color = CONFIG.COLORS.BOTH;
       if (updatedData.payer === '你') color = CONFIG.COLORS.YOUR;
       else if (updatedData.payer === '對方') color = CONFIG.COLORS.PARTNER;
-      sheet.getRange(i + 1, 1, 1, 10).setBackground(color);
+      sheet.getRange(i + 1, 1, 1, 13).setBackground(color);
 
       // 記錄日誌
       logAction('更新支出', `ID: ${updatedData.id}, 原: ${oldItem}($${oldAmount}) → 新: ${safeItem}($${updatedData.amount})`);
@@ -591,9 +703,9 @@ function deleteExpenseById(id) {
     throw new Error('只有管理員可以刪除記錄');
   }
 
-  // 找到 ID 欄位（第 10 欄）
+  // 找到 ID 欄位（第 13 欄）
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][9]) === String(id)) {
+    if (String(data[i][12]) === String(id)) {
       const item = data[i][1];
       const amount = data[i][2];
 
