@@ -1172,7 +1172,32 @@
 <body>
   <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 12px; flex-wrap: wrap;">
-      <h1 style="margin: 0; flex-shrink: 0;">💑 共同記帳</h1>
+      <div style="display: flex; align-items: center; gap: 12px; position: relative;">
+        <div style="position: relative;">
+          <h1 id="modeTitle" onclick="toggleModeMenu()" style="margin: 0; flex-shrink: 0; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;">
+            <span>💑 共同記帳</span>
+            <span style="font-size: 0.5em; opacity: 0.6;">▼</span>
+          </h1>
+          <!-- 模式選單 -->
+          <div id="modeMenu" class="hidden" style="position: absolute; top: 100%; left: 0; margin-top: 8px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 8px; min-width: 200px; z-index: 1000;">
+            <div onclick="selectMode('共同記帳')" style="padding: 12px 16px; cursor: pointer; border-radius: 8px; transition: background 0.2s; display: flex; align-items: center; gap: 10px;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='white'">
+              <span style="font-size: 1.5em;">💑</span>
+              <div>
+                <div style="font-weight: 500;">共同記帳</div>
+                <div style="font-size: 0.85em; color: #666;">兩人分帳、餘額結算</div>
+              </div>
+            </div>
+            <div onclick="selectMode('個人記帳')" style="padding: 12px 16px; cursor: pointer; border-radius: 8px; transition: background 0.2s; display: flex; align-items: center; gap: 10px;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='white'">
+              <span style="font-size: 1.5em;">👤</span>
+              <div>
+                <div style="font-weight: 500;">個人記帳</div>
+                <div style="font-size: 0.85em; color: #666;">記錄個人開銷</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button onclick="openSettingsModal()" style="background: none; border: none; font-size: 1.3em; cursor: pointer; padding: 5px; opacity: 0.6; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="配色設定">⚙️</button>
+      </div>
       <div id="userInfo" style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
         <div style="font-size: 0.9em; color: #999;">載入中...</div>
       </div>
@@ -1180,7 +1205,7 @@
     <div class="subtitle">讓錢的事變簡單</div>
 
     <!-- 結算卡片 - 最重要的資訊 -->
-    <div style="margin-bottom: 20px;">
+    <div class="settlement-section" style="margin-bottom: 20px;">
       <div class="stat-card balance" style="width: 100%; max-width: 100%;">
         <div class="stat-icon">💰</div>
         <div class="stat-label">結算</div>
@@ -1220,7 +1245,7 @@
         <input type="number" id="amount" placeholder="0">
       </div>
 
-      <div class="form-group">
+      <div class="form-group payer-field">
         <label>誰付錢</label>
         <select id="actualPayer" onchange="updatePaymentMethod()">
           <option value="you">我</option>
@@ -1231,7 +1256,7 @@
       </div>
 
       <!-- 不等額墊付的金額輸入 -->
-      <div class="form-group hidden" id="unequalPaymentFields">
+      <div class="form-group payer-field hidden" id="unequalPaymentFields">
         <label>實際付款金額</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
@@ -1248,7 +1273,7 @@
         </div>
       </div>
 
-      <div class="form-group">
+      <div class="form-group split-field">
         <label>幫誰付款（可複選）</label>
         <div style="display: flex; gap: 20px; align-items: center;">
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
@@ -1262,7 +1287,7 @@
         </div>
       </div>
 
-      <div class="form-group hidden" id="splitMethodGroup">
+      <div class="form-group split-field hidden" id="splitMethodGroup">
         <label>分帳方式</label>
         <div style="display: flex; gap: 10px; margin-bottom: 10px;">
           <button type="button" id="autoSplitBtn" class="split-method-btn active" onclick="setSplitMethod('auto')">自動均分</button>
@@ -1271,7 +1296,7 @@
         </div>
       </div>
 
-      <div class="form-group hidden" id="amountSplitGroup">
+      <div class="form-group split-field hidden" id="amountSplitGroup">
         <label>自訂分帳金額</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
@@ -1286,7 +1311,7 @@
         </div>
       </div>
 
-      <div class="form-group hidden" id="ratioSplitGroup">
+      <div class="form-group split-field hidden" id="ratioSplitGroup">
         <label>自訂分帳比例</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
@@ -1331,7 +1356,7 @@
 
       <div style="display: flex; gap: 10px;">
         <button class="btn btn-primary" onclick="addExpense()" style="flex: 1;">新增支出</button>
-        <button class="btn" onclick="openSettlementModal()" style="flex: 1; background: #10b981; color: white;">💰 記錄結算</button>
+        <button class="btn settlement-section" onclick="openSettlementModal()" style="flex: 1; background: #10b981; color: white;">💰 記錄結算</button>
       </div>
     </div>
 
@@ -1391,11 +1416,11 @@
           <span class="dashboard-title" id="dashboardTitle2">付款統計</span>
         </div>
         <div class="dashboard-content">
-          <div class="dashboard-row">
+          <div class="dashboard-row settlement-section">
             <span class="dashboard-label">👤 你應負擔</span>
             <span class="dashboard-value" id="yourTotal">$0</span>
           </div>
-          <div class="dashboard-row">
+          <div class="dashboard-row settlement-section">
             <span class="dashboard-label">👤 對方應負擔</span>
             <span class="dashboard-value" id="partnerTotal">$0</span>
           </div>
@@ -1656,6 +1681,36 @@
     </div>
   </div>
 
+  <!-- 設定模態框 -->
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-content" style="max-width: 400px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">🎨 介面配色</h2>
+        <button onclick="closeSettingsModal()" style="background: none; border: none; font-size: 1.8em; cursor: pointer; color: #999; padding: 5px 10px; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#999'">×</button>
+      </div>
+
+      <div class="form-group">
+        <label>選擇配色主題</label>
+        <select id="settingTheme">
+          <option value="紫色">💜 紫色</option>
+          <option value="藍色">💙 藍色</option>
+          <option value="綠色">💚 綠色</option>
+          <option value="粉色">💗 粉色</option>
+        </select>
+      </div>
+
+      <div style="margin-top: 20px; padding: 12px; background: #f9fafb; border-radius: 8px; font-size: 0.85em; color: #666;">
+        💡 提示：配色設定只影響你的個人裝置<br>
+        要切換記帳模式請點擊上方標題
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="btn" onclick="closeSettingsModal()" style="flex: 1; background: #e5e7eb; color: #374151;">取消</button>
+        <button class="btn btn-primary" onclick="saveTheme()" style="flex: 1;">套用</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // 全局變數
     let allExpenses = []; // 儲存所有記錄（用於儀表板和統計）
@@ -1669,6 +1724,7 @@
     let yourName = '你'; // 當前使用者的名稱（從 Google 帳號取得）
     let partnerName = '對方'; // 對方的名稱（從設定讀取）
     let categoriesData = {}; // 儲存分類資料結構 {主分類: [子分類...]}
+    let appSettings = {mode: '共同記帳', theme: '紫色'}; // 應用程式設定
 
     // ==================== 工具函數 ====================
 
@@ -1811,6 +1867,143 @@
         subCategorySelect.appendChild(option);
       });
     }
+
+    /**
+     * 載入應用程式設定（記帳模式、介面配色）
+     */
+    function loadAppSettings() {
+      // 先檢查 localStorage 是否有使用者偏好設定
+      const savedMode = localStorage.getItem('accountingMode');
+      const savedTheme = localStorage.getItem('accountingTheme');
+
+      if (savedMode && savedTheme) {
+        // 使用 localStorage 的設定
+        appSettings = {mode: savedMode, theme: savedTheme};
+        applyTheme(savedTheme);
+        applyMode(savedMode);
+        console.log('使用 localStorage 設定:', appSettings);
+      } else {
+        // 第一次使用，從試算表讀取預設值
+        google.script.run
+          .withSuccessHandler(function(settings) {
+            appSettings = settings;
+            // 儲存到 localStorage
+            localStorage.setItem('accountingMode', settings.mode);
+            localStorage.setItem('accountingTheme', settings.theme);
+            applyTheme(settings.theme);
+            applyMode(settings.mode);
+            console.log('從試算表讀取預設設定:', appSettings);
+          })
+          .withFailureHandler(function(error) {
+            console.error('載入設定失敗:', error);
+            // 使用硬編碼預設值
+            appSettings = {mode: '共同記帳', theme: '紫色'};
+            localStorage.setItem('accountingMode', '共同記帳');
+            localStorage.setItem('accountingTheme', '紫色');
+            applyTheme('紫色');
+            applyMode('共同記帳');
+          })
+          .getAppSettings();
+      }
+    }
+
+    /**
+     * 套用主題配色
+     */
+    function applyTheme(theme) {
+      const themes = {
+        '紫色': {primary: '#667eea', secondary: '#764ba2'},
+        '藍色': {primary: '#3b82f6', secondary: '#1e40af'},
+        '綠色': {primary: '#10b981', secondary: '#059669'},
+        '粉色': {primary: '#ec4899', secondary: '#db2777'}
+      };
+
+      const colors = themes[theme] || themes['紫色'];
+
+      // 更新 CSS 變數
+      document.documentElement.style.setProperty('--primary-color', colors.primary);
+      document.documentElement.style.setProperty('--secondary-color', colors.secondary);
+
+      // 更新背景漸層
+      document.body.style.background = `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%)`;
+    }
+
+    /**
+     * 套用記帳模式
+     */
+    function applyMode(mode) {
+      const isPersonalMode = (mode === '個人記帳');
+
+      // 更新標題文字（保留下拉箭頭）
+      const titleEl = document.getElementById('modeTitle');
+      if (titleEl) {
+        const icon = isPersonalMode ? '👤' : '💑';
+        const text = isPersonalMode ? '個人記帳' : '共同記帳';
+        titleEl.innerHTML = '<span>' + icon + ' ' + text + '</span><span style="font-size: 0.5em; opacity: 0.6;">▼</span>';
+      }
+
+      // 個人模式隱藏付款人和分帳欄位
+      const payerFields = document.querySelectorAll('.payer-field, .split-field');
+      payerFields.forEach(field => {
+        field.style.display = isPersonalMode ? 'none' : 'block';
+      });
+
+      // 個人模式隱藏結算相關元素
+      const settlementSections = document.querySelectorAll('.settlement-section');
+      settlementSections.forEach(section => {
+        section.style.display = isPersonalMode ? 'none' : '';
+      });
+
+      // 個人模式時，自動設定付款人為「你」，分帳為100%/0%
+      if (isPersonalMode) {
+        const payerRadios = document.querySelectorAll('input[name="payer"]');
+        payerRadios.forEach(radio => {
+          if (radio.value === '你') radio.checked = true;
+        });
+      }
+    }
+
+    /**
+     * 切換模式選單顯示/隱藏
+     */
+    function toggleModeMenu() {
+      const menu = document.getElementById('modeMenu');
+      menu.classList.toggle('hidden');
+    }
+
+    /**
+     * 選擇記帳模式
+     */
+    function selectMode(mode) {
+      // 關閉選單
+      document.getElementById('modeMenu').classList.add('hidden');
+
+      // 如果是同一個模式，不做任何事
+      if (appSettings.mode === mode) return;
+
+      // 儲存到 localStorage
+      localStorage.setItem('accountingMode', mode);
+      appSettings.mode = mode;
+
+      // 套用新模式
+      applyMode(mode);
+
+      // 顯示提示
+      const modeText = mode === '個人記帳' ? '👤 個人記帳' : '💑 共同記帳';
+      showToast('已切換至 ' + modeText, 'success');
+
+      // 重新載入資料以更新顯示
+      loadData();
+    }
+
+    // 點擊其他地方關閉選單
+    document.addEventListener('click', function(event) {
+      const menu = document.getElementById('modeMenu');
+      const title = document.getElementById('modeTitle');
+      if (menu && title && !menu.contains(event.target) && !title.contains(event.target)) {
+        menu.classList.add('hidden');
+      }
+    });
 
     // ==================== 安全性函數 ====================
 
@@ -2216,25 +2409,41 @@
       document.getElementById('totalExpense').textContent = formatMoney(total);
 
       const balanceEl = document.getElementById('balance');
-      if (!allExpensesLoaded) {
-        // 資料尚未載入完成
-        balanceEl.textContent = '結算中...';
-        balanceEl.style.color = '#999';
-      } else if (!allExpenses || allExpenses.length === 0) {
-        balanceEl.textContent = '尚無記錄';
-        balanceEl.style.color = '#999';
-      } else if (Math.abs(yourBalance) < 0.01) {
-        // 已結清（誤差在 0.01 以內視為結清）
-        balanceEl.textContent = '已結清 ✨';
-        balanceEl.style.color = '';
-      } else if (yourBalance > 0) {
-        // 我付得比我該付的多 → 對方應付給我
-        balanceEl.textContent = partnerName + ' 應付你 ' + formatMoney(Math.abs(yourBalance));
-        balanceEl.style.color = '';
+
+      // 個人模式：顯示總支出
+      if (appSettings.mode === '個人記帳') {
+        if (!allExpensesLoaded) {
+          balanceEl.textContent = '計算中...';
+          balanceEl.style.color = '#999';
+        } else if (!allExpenses || allExpenses.length === 0) {
+          balanceEl.textContent = '尚無記錄';
+          balanceEl.style.color = '#999';
+        } else {
+          balanceEl.textContent = '總支出 ' + formatMoney(total);
+          balanceEl.style.color = '';
+        }
       } else {
-        // 我付得比我該付的少 → 我應付給對方
-        balanceEl.textContent = '你應付 ' + partnerName + ' ' + formatMoney(Math.abs(yourBalance));
-        balanceEl.style.color = '';
+        // 共同記帳模式：顯示餘額
+        if (!allExpensesLoaded) {
+          // 資料尚未載入完成
+          balanceEl.textContent = '結算中...';
+          balanceEl.style.color = '#999';
+        } else if (!allExpenses || allExpenses.length === 0) {
+          balanceEl.textContent = '尚無記錄';
+          balanceEl.style.color = '#999';
+        } else if (Math.abs(yourBalance) < 0.01) {
+          // 已結清（誤差在 0.01 以內視為結清）
+          balanceEl.textContent = '已結清 ✨';
+          balanceEl.style.color = '';
+        } else if (yourBalance > 0) {
+          // 我付得比我該付的多 → 對方應付給我
+          balanceEl.textContent = partnerName + ' 應付你 ' + formatMoney(Math.abs(yourBalance));
+          balanceEl.style.color = '';
+        } else {
+          // 我付得比我該付的少 → 我應付給對方
+          balanceEl.textContent = '你應付 ' + partnerName + ' ' + formatMoney(Math.abs(yourBalance));
+          balanceEl.style.color = '';
+        }
       }
 
 
@@ -2443,6 +2652,42 @@
 
     function closeEditExpenseModal() {
       document.getElementById('editExpenseModal').classList.add('hidden');
+    }
+
+    /**
+     * 開啟設定模態框
+     */
+    function openSettingsModal() {
+      // 載入目前配色
+      document.getElementById('settingTheme').value = appSettings.theme;
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    /**
+     * 關閉設定模態框
+     */
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    /**
+     * 儲存配色主題
+     */
+    function saveTheme() {
+      const theme = document.getElementById('settingTheme').value;
+
+      // 儲存到 localStorage
+      localStorage.setItem('accountingTheme', theme);
+      appSettings.theme = theme;
+
+      // 套用配色
+      applyTheme(theme);
+
+      // 關閉模態框
+      closeSettingsModal();
+
+      // 顯示提示
+      showToast('配色已更新！', 'success');
     }
 
     function updateEditPayerOptions() {
@@ -2936,6 +3181,13 @@
       const mainCategory = document.getElementById('mainCategory').value;
       const subCategory = document.getElementById('subCategory').value;
       const category = subCategory ? (mainCategory + '>' + subCategory) : mainCategory;
+
+      // 個人模式：自動設定付款人為「你」，分帳為 100%/0%
+      if (appSettings.mode === '個人記帳') {
+        document.getElementById('actualPayer').value = 'you';
+        document.getElementById('payForYou').checked = true;
+        document.getElementById('payForPartner').checked = false;
+      }
 
       // 前端驗證
       if (!validateInput(item, 'text', 1, 100)) {
@@ -3745,6 +3997,7 @@
     });
 
     window.onload = function() {
+      loadAppSettings();  // 先載入設定（配色和模式）
       loadData();
       loadUserInfo();
       loadQuickExpenseButtons();

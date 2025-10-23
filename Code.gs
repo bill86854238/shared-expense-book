@@ -122,7 +122,9 @@ function createSettingsSheet(ss) {
       ['對方的名字', '對方'],
       ['預設分類', '飲食,居住,交通,娛樂,寵物,服飾,其他'],
       ['週期事件最後執行日期', ''],
-      ['允許存取的使用者', owner]
+      ['允許存取的使用者', owner],
+      ['記帳模式', '共同記帳'],
+      ['介面配色', '紫色']
     ];
 
     sheet.getRange(1, 1, settings.length, 2).setValues(settings);
@@ -137,6 +139,10 @@ function createSettingsSheet(ss) {
     // 加入說明
     sheet.getRange('C6').setValue('多個使用者用逗號分隔，例如：user1@gmail.com, user2@gmail.com');
     sheet.getRange('C6').setFontSize(9).setFontColor('#999999');
+    sheet.getRange('C7').setValue('個人記帳 / 共同記帳');
+    sheet.getRange('C7').setFontSize(9).setFontColor('#999999');
+    sheet.getRange('C8').setValue('紫色 / 藍色 / 綠色 / 粉色');
+    sheet.getRange('C8').setFontSize(9).setFontColor('#999999');
 
     // 快速記帳按鈕設定
     const quickExpenseHeaders = ['表情符號', '項目', '金額', '分類'];
@@ -564,6 +570,39 @@ function getCurrentUser() {
     photoUrl: photoUrl,
     allowed: permission.allowed
   };
+}
+
+/**
+ * 取得應用程式設定（記帳模式、介面配色）
+ */
+function getAppSettings() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+
+    if (!settingsSheet) {
+      Logger.log('設定工作表不存在');
+      return {
+        mode: '共同記帳',
+        theme: '紫色'
+      };
+    }
+
+    // 讀取記帳模式（B7）和介面配色（B8）
+    const mode = settingsSheet.getRange('B7').getValue() || '共同記帳';
+    const theme = settingsSheet.getRange('B8').getValue() || '紫色';
+
+    return {
+      mode: String(mode).trim(),
+      theme: String(theme).trim()
+    };
+  } catch (e) {
+    Logger.log('讀取應用程式設定失敗: ' + e.toString());
+    return {
+      mode: '共同記帳',
+      theme: '紫色'
+    };
+  }
 }
 
 /**
@@ -1703,7 +1742,9 @@ function resetSystem() {
       ['對方的名字', '對方'],
       ['預設分類', '飲食,居住,交通,娛樂,寵物,服飾,其他'],
       ['週期事件最後執行日期', ''],
-      ['允許存取的使用者', owner]
+      ['允許存取的使用者', owner],
+      ['記帳模式', '共同記帳'],
+      ['介面配色', '紫色']
     ];
     settingsSheet.getRange(1, 1, settings.length, 2).setValues(settings);
     settingsSheet.getRange(1, 1, 1, 2)
@@ -1714,6 +1755,10 @@ function resetSystem() {
     settingsSheet.setColumnWidth(2, 400);
     settingsSheet.getRange('C6').setValue('多個使用者用逗號分隔，例如：user1@gmail.com, user2@gmail.com');
     settingsSheet.getRange('C6').setFontSize(9).setFontColor('#999999');
+    settingsSheet.getRange('C7').setValue('個人記帳 / 共同記帳');
+    settingsSheet.getRange('C7').setFontSize(9).setFontColor('#999999');
+    settingsSheet.getRange('C8').setValue('紫色 / 藍色 / 綠色 / 粉色');
+    settingsSheet.getRange('C8').setFontSize(9).setFontColor('#999999');
 
     // 快速記帳按鈕設定
     const quickExpenseHeaders = ['表情符號', '項目', '金額', '分類'];
