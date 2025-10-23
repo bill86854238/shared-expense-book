@@ -8,7 +8,8 @@ const CONFIG = {
   SHEET_NAMES: {
     EXPENSES: '支出記錄',
     RECURRING: '週期設定',
-    SETTINGS: '設定'
+    SETTINGS: '設定',
+    CATEGORIES: '分類設定'
   },
   COLORS: {
     HEADER: '#8b5cf6',
@@ -50,9 +51,10 @@ function initializeSpreadsheet() {
   createExpensesSheet(ss);
   createRecurringSheet(ss);
   createSettingsSheet(ss);
+  createCategoriesSheet(ss);
   setupTriggers();
 
-  ui.alert('✅ 初始化完成！\n\n已建立：\n1. 支出記錄\n2. 週期設定\n3. 設定\n\n並設定每日自動執行週期事件。');
+  ui.alert('✅ 初始化完成！\n\n已建立：\n1. 支出記錄\n2. 週期設定\n3. 設定\n4. 分類設定\n\n並設定每日自動執行週期事件。');
 }
 
 function createExpensesSheet(ss) {
@@ -61,7 +63,7 @@ function createExpensesSheet(ss) {
     // 只有不存在時才建立新的
     sheet = ss.insertSheet(CONFIG.SHEET_NAMES.EXPENSES);
 
-    const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '你實付', '對方實付', '分類', '是否週期', '週期日期', 'ID'];
+    const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '你實付', '對方實付', '分類', '是否週期', '週期日期', 'ID', '記錄類型'];
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
     sheet.getRange(1, 1, 1, headers.length)
@@ -70,7 +72,7 @@ function createExpensesSheet(ss) {
       .setFontWeight('bold')
       .setHorizontalAlignment('center');
 
-    const widths = [100, 150, 100, 100, 100, 100, 100, 100, 100, 80, 80, 80, 120];
+    const widths = [100, 150, 100, 100, 100, 100, 100, 100, 100, 80, 80, 80, 120, 100];
     widths.forEach((width, i) => sheet.setColumnWidth(i + 1, width));
 
     sheet.setFrozenRows(1);
@@ -118,7 +120,7 @@ function createSettingsSheet(ss) {
       ['設定項目', '值'],
       ['你的名字', '你'],
       ['對方的名字', '對方'],
-      ['預設分類', '飲食,居住,交通,娛樂,其他'],
+      ['預設分類', '飲食,居住,交通,娛樂,寵物,服飾,其他'],
       ['週期事件最後執行日期', ''],
       ['允許存取的使用者', owner]
     ];
@@ -135,13 +137,193 @@ function createSettingsSheet(ss) {
     // 加入說明
     sheet.getRange('C6').setValue('多個使用者用逗號分隔，例如：user1@gmail.com, user2@gmail.com');
     sheet.getRange('C6').setFontSize(9).setFontColor('#999999');
+
+    // 快速記帳按鈕設定
+    const quickExpenseHeaders = ['表情符號', '項目', '金額', '分類'];
+    const quickExpenseData = [
+      ['🍳', '早餐', 50, '飲食'],
+      ['🍱', '午餐', 100, '飲食'],
+      ['🍽️', '晚餐', 150, '飲食'],
+      ['☕', '咖啡', 60, '飲食'],
+      ['🚇', '交通', 20, '交通'],
+      ['🅿️', '停車', 50, '交通'],
+      ['🍰', '點心', 80, '飲食'],
+      ['🧋', '飲料', 50, '飲食']
+    ];
+
+    sheet.getRange(8, 1).setValue('快速記帳按鈕設定');
+    sheet.getRange(8, 1).setFontWeight('bold').setFontSize(11);
+    sheet.getRange(9, 1, 1, 4).setValues([quickExpenseHeaders]);
+    sheet.getRange(9, 1, 1, 4)
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+
+    sheet.getRange(10, 1, quickExpenseData.length, 4).setValues(quickExpenseData);
+    sheet.getRange(10, 1, quickExpenseData.length, 4).setHorizontalAlignment('center');
+
+    // 設定欄位寬度
+    sheet.setColumnWidth(1, 100);  // 表情符號
+    sheet.setColumnWidth(2, 120);  // 項目
+    sheet.setColumnWidth(3, 80);   // 金額
+    sheet.setColumnWidth(4, 100);  // 分類
+
+    // 加入說明
+    sheet.getRange('A18').setValue('💡 提示：可以自由新增、修改或刪除快速記帳按鈕（最多 12 個）');
+    sheet.getRange('A18').setFontSize(9).setFontColor('#999999');
+  }
+  // 如果已存在，不做任何事（保護資料）
+}
+
+function createCategoriesSheet(ss) {
+  let sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CATEGORIES);
+  if (!sheet) {
+    // 只有不存在時才建立新的
+    sheet = ss.insertSheet(CONFIG.SHEET_NAMES.CATEGORIES);
+
+    // 橫向佈局：第1行是主分類，第2行往下是子分類
+    const mainCategories = ['飲食', '居住', '交通', '娛樂', '寵物', '服飾', '其他'];
+    const subCategories = {
+      '飲食': ['早餐', '午餐', '晚餐', '宵夜', '飲料', '點心'],
+      '居住': ['房租', '水電', '網路', '家具'],
+      '交通': ['捷運', '公車', '計程車', '加油', '停車'],
+      '娛樂': ['電影', '遊戲', '旅遊'],
+      '寵物': ['飼料', '看醫生', '美容'],
+      '服飾': [],
+      '其他': []
+    };
+
+    // 設定第1行（主分類）
+    sheet.getRange(1, 1, 1, mainCategories.length).setValues([mainCategories]);
+    sheet.getRange(1, 1, 1, mainCategories.length)
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center')
+      .setVerticalAlignment('middle');
+
+    // 設定子分類（第2行往下）
+    let maxRows = 1;
+    mainCategories.forEach((cat, colIndex) => {
+      const subs = subCategories[cat] || [];
+      if (subs.length > 0) {
+        const colData = subs.map(sub => [sub]);
+        sheet.getRange(2, colIndex + 1, subs.length, 1).setValues(colData);
+        sheet.getRange(2, colIndex + 1, subs.length, 1).setHorizontalAlignment('center');
+        maxRows = Math.max(maxRows, subs.length + 1);
+      }
+    });
+
+    // 設定欄位寬度
+    for (let i = 1; i <= mainCategories.length; i++) {
+      sheet.setColumnWidth(i, 120);
+    }
+
+    // 凍結第1行
+    sheet.setFrozenRows(1);
+
+    // 加入說明
+    sheet.getRange(maxRows + 2, 1).setValue('💡 使用說明：');
+    sheet.getRange(maxRows + 2, 1).setFontWeight('bold').setFontSize(11);
+    sheet.getRange(maxRows + 3, 1, 1, 3).merge();
+    sheet.getRange(maxRows + 3, 1).setValue(
+      '• 第1行：主分類名稱\n' +
+      '• 第2行往下：該主分類的子分類（選填）\n' +
+      '• 要新增主分類：在右邊加新欄位\n' +
+      '• 要新增子分類：在該欄下方加新行'
+    );
+    sheet.getRange(maxRows + 3, 1).setFontSize(9).setFontColor('#666666').setWrap(true);
   }
   // 如果已存在，不做任何事（保護資料）
 }
 
 // ==================== 核心功能 ====================
 
-function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid) {
+/**
+ * 取得分類列表（從分類設定工作表讀取）
+ */
+function getCategories() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const categoriesSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CATEGORIES);
+
+    if (!categoriesSheet) {
+      // 找不到分類設定工作表，嘗試從舊的設定工作表讀取（向下相容）
+      return getCategoriesFromSettings();
+    }
+
+    const data = categoriesSheet.getDataRange().getValues();
+    if (data.length === 0) {
+      return ['飲食', '居住', '交通', '娛樂', '寵物', '服飾', '其他'];
+    }
+
+    const categories = [];
+    const mainCategories = data[0]; // 第1行是主分類
+
+    // 遍歷每一欄（主分類）
+    for (let col = 0; col < mainCategories.length; col++) {
+      const mainCat = String(mainCategories[col]).trim();
+      if (!mainCat) continue; // 跳過空的主分類
+
+      // 加入主分類
+      categories.push(mainCat);
+
+      // 讀取該欄的子分類（第2行往下）
+      for (let row = 1; row < data.length; row++) {
+        const subCat = data[row][col];
+        const subCatStr = String(subCat).trim();
+
+        // 跳過空白、說明文字（包含「使用說明」、「提示」等）
+        if (!subCatStr ||
+            subCatStr.includes('使用說明') ||
+            subCatStr.includes('提示') ||
+            subCatStr.includes('💡') ||
+            subCatStr.includes('•')) {
+          continue;
+        }
+
+        categories.push(mainCat + '>' + subCatStr);
+      }
+    }
+
+    return categories.length > 0 ? categories : ['飲食', '居住', '交通', '娛樂', '寵物', '服飾', '其他'];
+  } catch (e) {
+    Logger.log('讀取分類失敗: ' + e.toString());
+    return ['飲食', '居住', '交通', '娛樂', '寵物', '服飾', '其他'];
+  }
+}
+
+/**
+ * 從舊的設定工作表讀取分類（向下相容）
+ */
+function getCategoriesFromSettings() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+
+    if (!settingsSheet) {
+      return ['飲食', '居住', '交通', '娛樂', '寵物', '服飾', '其他'];
+    }
+
+    // 讀取 B4 儲存格（預設分類）
+    const categoriesStr = settingsSheet.getRange('B4').getValue();
+
+    if (!categoriesStr) {
+      return ['飲食', '居住', '交通', '娛樂', '寵物', '服飾', '其他'];
+    }
+
+    // 分割逗號並去除空白
+    const categories = String(categoriesStr).split(',').map(c => c.trim()).filter(c => c.length > 0);
+
+    return categories.length > 0 ? categories : ['飲食', '居住', '交通', '娛樂', '寵物', '服飾', '其他'];
+  } catch (e) {
+    Logger.log('從設定工作表讀取分類失敗: ' + e.toString());
+    return ['飲食', '居住', '交通', '娛樂', '寵物', '服飾', '其他'];
+  }
+}
+
+function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid, expenseDate, expenseTime) {
   // 檢查頻率限制
   checkRateLimit('addExpense');
 
@@ -168,7 +350,21 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
   }
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
-  const date = new Date();
+
+  // 處理日期時間：如果有提供 expenseDate 和 expenseTime，使用它們；否則使用當下時間
+  let date;
+  if (expenseDate && expenseTime) {
+    // 組合日期和時間字串 (YYYY-MM-DD HH:MM)
+    date = new Date(expenseDate + ' ' + expenseTime);
+  } else if (expenseDate) {
+    // 只有日期，時間設為當下
+    const now = new Date();
+    date = new Date(expenseDate + ' ' + now.toTimeString().substring(0, 5));
+  } else {
+    // 都沒有，使用當下時間
+    date = new Date();
+  }
+
   const id = date.getTime();
 
   // 過濾和轉義輸入
@@ -209,13 +405,14 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
     safeCategory,
     isRecurring || false,
     recurringDay || '',
-    id
+    id,
+    'expense'  // 記錄類型：支出
   ];
 
   sheet.appendRow(row);
 
   const lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow, 1, 1, 13).setHorizontalAlignment('center');
+  sheet.getRange(lastRow, 1, 1, 14).setHorizontalAlignment('center');
 
   let color = CONFIG.COLORS.BOTH;
   if (payer === '你') color = CONFIG.COLORS.YOUR;
@@ -321,29 +518,91 @@ function getCurrentUser() {
   const user = Session.getActiveUser().getEmail();
   const permission = checkUserPermission();
 
-  // 取得使用者照片 URL
+  // 取得使用者照片和名稱
   let photoUrl = '';
+  let displayName = user.split('@')[0]; // 預設使用 email 前綴
+
   try {
     // 使用 People API 取得使用者資訊
     const userInfo = People.People.get('people/me', {
-      personFields: 'photos'
+      personFields: 'photos,names'
     });
 
     if (userInfo.photos && userInfo.photos.length > 0) {
       photoUrl = userInfo.photos[0].url;
     }
+
+    // 取得使用者的顯示名稱
+    if (userInfo.names && userInfo.names.length > 0) {
+      displayName = userInfo.names[0].displayName || user.split('@')[0];
+    }
   } catch (e) {
-    Logger.log('無法取得使用者照片: ' + e.toString());
+    Logger.log('無法取得使用者資訊: ' + e.toString());
     // 使用預設 Google 帳號圖示
     photoUrl = 'https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png';
   }
 
+  // 取得「對方的名字」設定
+  let partnerName = '對方';
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+    if (settingsSheet) {
+      const partnerNameValue = settingsSheet.getRange('B3').getValue();
+      if (partnerNameValue && partnerNameValue.trim()) {
+        partnerName = String(partnerNameValue).trim();
+      }
+    }
+  } catch (e) {
+    Logger.log('無法取得對方名字設定: ' + e.toString());
+  }
+
   return {
     email: user,
-    name: user.split('@')[0],
+    name: displayName,
+    partnerName: partnerName,
     photoUrl: photoUrl,
     allowed: permission.allowed
   };
+}
+
+/**
+ * 取得快速記帳按鈕設定
+ */
+function getQuickExpenseButtons() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+
+    if (!settingsSheet) {
+      Logger.log('設定工作表不存在');
+      return [];
+    }
+
+    // 讀取第 10 行開始的快速記帳設定（最多 12 個）
+    const data = settingsSheet.getRange(10, 1, 12, 4).getValues();
+    const buttons = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const [emoji, item, amount, category] = data[i];
+
+      // 如果項目和金額都有值，則加入按鈕清單
+      if (item && amount) {
+        buttons.push({
+          emoji: emoji || '📝',
+          item: String(item).trim(),
+          amount: Number(amount) || 0,
+          category: String(category).trim() || '其他'
+        });
+      }
+    }
+
+    Logger.log('載入了 ' + buttons.length + ' 個快速記帳按鈕');
+    return buttons;
+  } catch (e) {
+    Logger.log('讀取快速記帳設定失敗: ' + e.toString());
+    return [];
+  }
 }
 
 // ==================== Web App API ====================
@@ -584,7 +843,9 @@ function addExpenseFromWeb(expenseData) {
     expenseData.isRecurring,
     expenseData.recurringDay,
     expenseData.yourActualPaid || null,  // 你實際付出的金額
-    expenseData.partnerActualPaid || null  // 對方實際付出的金額
+    expenseData.partnerActualPaid || null,  // 對方實際付出的金額
+    expenseData.expenseDate || null,  // 支出日期
+    expenseData.expenseTime || null   // 支出時間
   );
 }
 
@@ -1126,6 +1387,238 @@ function upgradeDataStructure() {
 }
 
 /**
+ * 升級快速記帳設定 - 在設定工作表新增快速記帳按鈕區域
+ */
+function addQuickExpenseSettings() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+
+  if (!settingsSheet) {
+    ui.alert('❌ 錯誤', '找不到「設定」工作表。\n\n請先執行「初始化系統」。', ui.ButtonSet.OK);
+    return;
+  }
+
+  // 檢查第 8 行是否已有快速記帳設定
+  const cell8 = settingsSheet.getRange('A8').getValue();
+  if (cell8 === '快速記帳按鈕設定') {
+    ui.alert('✅ 快速記帳設定已存在', '無需重複新增。', ui.ButtonSet.OK);
+    return;
+  }
+
+  // 確認升級
+  const response = ui.alert(
+    '🔄 新增快速記帳設定',
+    '即將在「設定」工作表新增快速記帳按鈕設定區域。\n\n' +
+    '你可以在試算表直接修改快速記帳按鈕的項目、金額和分類。\n\n' +
+    '這不會影響任何現有資料。\n\n' +
+    '確定要新增嗎？',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    ui.alert('✅ 已取消');
+    return;
+  }
+
+  // 新增快速記帳按鈕設定
+  const quickExpenseHeaders = ['表情符號', '項目', '金額', '分類'];
+  const quickExpenseData = [
+    ['🍳', '早餐', 50, '飲食'],
+    ['🍱', '午餐', 100, '飲食'],
+    ['🍽️', '晚餐', 150, '飲食'],
+    ['☕', '咖啡', 60, '飲食'],
+    ['🚇', '交通', 20, '交通'],
+    ['🅿️', '停車', 50, '交通'],
+    ['🍰', '點心', 80, '飲食'],
+    ['🧋', '飲料', 50, '飲食']
+  ];
+
+  settingsSheet.getRange(8, 1).setValue('快速記帳按鈕設定');
+  settingsSheet.getRange(8, 1).setFontWeight('bold').setFontSize(11);
+  settingsSheet.getRange(9, 1, 1, 4).setValues([quickExpenseHeaders]);
+  settingsSheet.getRange(9, 1, 1, 4)
+    .setBackground(CONFIG.COLORS.HEADER)
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
+
+  settingsSheet.getRange(10, 1, quickExpenseData.length, 4).setValues(quickExpenseData);
+  settingsSheet.getRange(10, 1, quickExpenseData.length, 4).setHorizontalAlignment('center');
+
+  // 設定欄位寬度
+  settingsSheet.setColumnWidth(1, 100);  // 表情符號
+  settingsSheet.setColumnWidth(2, 120);  // 項目
+  settingsSheet.setColumnWidth(3, 80);   // 金額
+  settingsSheet.setColumnWidth(4, 100);  // 分類
+
+  // 加入說明
+  settingsSheet.getRange('A18').setValue('💡 提示：可以自由新增、修改或刪除快速記帳按鈕（最多 12 個）');
+  settingsSheet.getRange('A18').setFontSize(9).setFontColor('#999999');
+
+  ui.alert('✅ 新增完成！\n\n已在「設定」工作表新增快速記帳按鈕設定區域。\n\n你現在可以直接在試算表編輯按鈕設定，重新整理網頁後就會生效！');
+}
+
+/**
+ * 一鍵升級到最新版本 - 自動執行所有可用的升級
+ */
+function upgradeToLatest() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 檢查是否已初始化
+  const expensesSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+  if (!expensesSheet) {
+    ui.alert('❌ 錯誤', '找不到「支出記錄」工作表。\n\n請先執行「初始化系統」。', ui.ButtonSet.OK);
+    return;
+  }
+
+  // 確認升級
+  const response = ui.alert(
+    '🔄 升級到最新版本',
+    '即將檢查並執行所有可用的升級項目：\n\n' +
+    '• v2.4 - 墊付功能（實際付款人欄位）\n' +
+    '• v2.5 - 快速記帳按鈕設定\n' +
+    '• v2.8 - 結算功能（記錄類型欄位）\n\n' +
+    '已完成的升級會自動跳過，不會重複執行。\n\n' +
+    '確定要開始升級嗎？',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    ui.alert('✅ 已取消升級');
+    return;
+  }
+
+  const upgrades = [];
+  let hasUpgrade = false;
+
+  // === 檢查 v2.4：墊付功能 ===
+  const headers = expensesSheet.getRange(1, 1, 1, expensesSheet.getLastColumn()).getValues()[0];
+  const actualPayerIndex = headers.indexOf('實際付款人');
+
+  if (actualPayerIndex === -1) {
+    // 需要升級 v2.4
+    try {
+      // 執行升級：在第 5 欄（付款人後）插入新欄位
+      expensesSheet.insertColumnAfter(4);
+      expensesSheet.getRange(1, 5).setValue('實際付款人');
+      expensesSheet.getRange(1, 5)
+        .setBackground(CONFIG.COLORS.HEADER)
+        .setFontColor('#ffffff')
+        .setFontWeight('bold')
+        .setHorizontalAlignment('center');
+      expensesSheet.setColumnWidth(5, 100);
+
+      // 自動填入舊資料
+      const lastRow = expensesSheet.getLastRow();
+      if (lastRow > 1) {
+        const payerData = expensesSheet.getRange(2, 4, lastRow - 1, 1).getValues();
+        expensesSheet.getRange(2, 5, lastRow - 1, 1).setValues(payerData);
+      }
+
+      upgrades.push('✓ v2.4 墊付功能');
+      hasUpgrade = true;
+    } catch (e) {
+      upgrades.push('✗ v2.4 墊付功能失敗：' + e.toString());
+    }
+  } else {
+    upgrades.push('- v2.4 墊付功能（已安裝）');
+  }
+
+  // === 檢查 v2.5：快速記帳設定 ===
+  const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+  if (!settingsSheet) {
+    upgrades.push('✗ v2.5 快速記帳設定失敗：找不到設定工作表');
+  } else {
+    const cell8 = settingsSheet.getRange('A8').getValue();
+    if (cell8 !== '快速記帳按鈕設定') {
+      // 需要升級 v2.5
+      try {
+        const quickExpenseHeaders = ['表情符號', '項目', '金額', '分類'];
+        const quickExpenseData = [
+          ['🍳', '早餐', 50, '飲食'],
+          ['🍱', '午餐', 100, '飲食'],
+          ['🍽️', '晚餐', 150, '飲食'],
+          ['☕', '咖啡', 60, '飲食'],
+          ['🚇', '交通', 20, '交通'],
+          ['🅿️', '停車', 50, '交通'],
+          ['🍰', '點心', 80, '飲食'],
+          ['🧋', '飲料', 50, '飲食']
+        ];
+
+        settingsSheet.getRange(8, 1).setValue('快速記帳按鈕設定');
+        settingsSheet.getRange(8, 1).setFontWeight('bold').setFontSize(11);
+        settingsSheet.getRange(9, 1, 1, 4).setValues([quickExpenseHeaders]);
+        settingsSheet.getRange(9, 1, 1, 4)
+          .setBackground(CONFIG.COLORS.HEADER)
+          .setFontColor('#ffffff')
+          .setFontWeight('bold')
+          .setHorizontalAlignment('center');
+        settingsSheet.getRange(10, 1, quickExpenseData.length, 4).setValues(quickExpenseData);
+        settingsSheet.getRange(10, 1, quickExpenseData.length, 4).setHorizontalAlignment('center');
+        settingsSheet.setColumnWidth(1, 100);
+        settingsSheet.setColumnWidth(2, 120);
+        settingsSheet.setColumnWidth(3, 80);
+        settingsSheet.setColumnWidth(4, 100);
+        settingsSheet.getRange('A18').setValue('💡 提示：可以自由新增、修改或刪除快速記帳按鈕（最多 12 個）');
+        settingsSheet.getRange('A18').setFontSize(9).setFontColor('#999999');
+
+        upgrades.push('✓ v2.5 快速記帳設定');
+        hasUpgrade = true;
+      } catch (e) {
+        upgrades.push('✗ v2.5 快速記帳設定失敗：' + e.toString());
+      }
+    } else {
+      upgrades.push('- v2.5 快速記帳設定（已安裝）');
+    }
+  }
+
+  // === 檢查 v2.8：結算功能（記錄類型欄位） ===
+  const recordTypeIndex = headers.indexOf('記錄類型');
+
+  if (recordTypeIndex === -1) {
+    // 需要升級 v2.8
+    try {
+      // 在最後一欄新增「記錄類型」欄位
+      const lastCol = expensesSheet.getLastColumn();
+      expensesSheet.getRange(1, lastCol + 1).setValue('記錄類型');
+      expensesSheet.getRange(1, lastCol + 1)
+        .setBackground(CONFIG.COLORS.HEADER)
+        .setFontColor('#ffffff')
+        .setFontWeight('bold')
+        .setHorizontalAlignment('center');
+      expensesSheet.setColumnWidth(lastCol + 1, 100);
+
+      // 自動填入現有資料為 'expense'
+      const lastRow = expensesSheet.getLastRow();
+      if (lastRow > 1) {
+        const recordTypes = [];
+        for (let i = 0; i < lastRow - 1; i++) {
+          recordTypes.push(['expense']);
+        }
+        expensesSheet.getRange(2, lastCol + 1, lastRow - 1, 1).setValues(recordTypes);
+      }
+
+      upgrades.push('✓ v2.8 結算功能');
+      hasUpgrade = true;
+    } catch (e) {
+      upgrades.push('✗ v2.8 結算功能失敗：' + e.toString());
+    }
+  } else {
+    upgrades.push('- v2.8 結算功能（已安裝）');
+  }
+
+  // 顯示結果
+  const message = upgrades.join('\n');
+  if (hasUpgrade) {
+    ui.alert('✅ 升級完成！\n\n' + message + '\n\n系統已升級到最新版本！');
+  } else {
+    ui.alert('✅ 已是最新版本\n\n' + message + '\n\n無需升級。');
+  }
+}
+
+/**
  * 重置系統 - 清空所有資料（危險操作）
  */
 function resetSystem() {
@@ -1173,7 +1666,7 @@ function resetSystem() {
 
   // 執行重置
   expensesSheet.clear();
-  const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '分類', '是否週期', '週期日期', 'ID'];
+  const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '你實付', '對方實付', '分類', '是否週期', '週期日期', 'ID', '記錄類型'];
   expensesSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   expensesSheet.getRange(1, 1, 1, headers.length)
     .setBackground(CONFIG.COLORS.HEADER)
@@ -1181,7 +1674,7 @@ function resetSystem() {
     .setFontWeight('bold')
     .setHorizontalAlignment('center');
 
-  const widths = [100, 150, 100, 100, 100, 100, 100, 80, 80, 80, 120];
+  const widths = [100, 150, 100, 100, 100, 100, 100, 100, 100, 80, 80, 80, 120, 100];
   widths.forEach((width, i) => expensesSheet.setColumnWidth(i + 1, width));
 
   expensesSheet.setFrozenRows(1);
@@ -1208,7 +1701,7 @@ function resetSystem() {
       ['設定項目', '值'],
       ['你的名字', '你'],
       ['對方的名字', '對方'],
-      ['預設分類', '飲食,居住,交通,娛樂,其他'],
+      ['預設分類', '飲食,居住,交通,娛樂,寵物,服飾,其他'],
       ['週期事件最後執行日期', ''],
       ['允許存取的使用者', owner]
     ];
@@ -1221,7 +1714,49 @@ function resetSystem() {
     settingsSheet.setColumnWidth(2, 400);
     settingsSheet.getRange('C6').setValue('多個使用者用逗號分隔，例如：user1@gmail.com, user2@gmail.com');
     settingsSheet.getRange('C6').setFontSize(9).setFontColor('#999999');
+
+    // 快速記帳按鈕設定
+    const quickExpenseHeaders = ['表情符號', '項目', '金額', '分類'];
+    const quickExpenseData = [
+      ['🍳', '早餐', 50, '飲食'],
+      ['🍱', '午餐', 100, '飲食'],
+      ['🍽️', '晚餐', 150, '飲食'],
+      ['☕', '咖啡', 60, '飲食'],
+      ['🚇', '交通', 20, '交通'],
+      ['🅿️', '停車', 50, '交通'],
+      ['🍰', '點心', 80, '飲食'],
+      ['🧋', '飲料', 50, '飲食']
+    ];
+
+    settingsSheet.getRange(8, 1).setValue('快速記帳按鈕設定');
+    settingsSheet.getRange(8, 1).setFontWeight('bold').setFontSize(11);
+    settingsSheet.getRange(9, 1, 1, 4).setValues([quickExpenseHeaders]);
+    settingsSheet.getRange(9, 1, 1, 4)
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+
+    settingsSheet.getRange(10, 1, quickExpenseData.length, 4).setValues(quickExpenseData);
+    settingsSheet.getRange(10, 1, quickExpenseData.length, 4).setHorizontalAlignment('center');
+
+    // 設定欄位寬度
+    settingsSheet.setColumnWidth(1, 100);  // 表情符號
+    settingsSheet.setColumnWidth(2, 120);  // 項目
+    settingsSheet.setColumnWidth(3, 80);   // 金額
+    settingsSheet.setColumnWidth(4, 100);  // 分類
+
+    // 加入說明
+    settingsSheet.getRange('A18').setValue('💡 提示：可以自由新增、修改或刪除快速記帳按鈕（最多 12 個）');
+    settingsSheet.getRange('A18').setFontSize(9).setFontColor('#999999');
   }
+
+  // 重置分類設定工作表
+  const categoriesSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.CATEGORIES);
+  if (categoriesSheet) {
+    ss.deleteSheet(categoriesSheet);
+  }
+  createCategoriesSheet(ss);
 
   ui.alert('✅ 重置完成！\n\n所有資料已清空，系統已重新初始化。');
 }
@@ -1232,8 +1767,10 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('📊 記帳系統')
     .addItem('🚀 初始化系統（僅首次）', 'initializeSpreadsheet')
-    .addItem('🔄 升級資料結構', 'upgradeDataStructure')
     .addItem('📱 開啟網頁版', 'openWebApp')
+    .addSeparator()
+    .addItem('🔄 升級到最新版本', 'upgradeToLatest')
+    .addItem('📥 匯入 SettleUp CSV', 'importSettleUpCSV')
     .addSeparator()
     .addItem('🔄 手動執行週期事件', 'manualExecuteRecurring')
     .addItem('📈 查看統計資料', 'showStatistics')
@@ -1267,4 +1804,753 @@ function showStatistics() {
   const message = `📊 統計資料\n\n💰 總支出: ${stats.total.toLocaleString()}\n\n👤 你付了: ${stats.yourTotal.toLocaleString()}\n👤 對方付了: ${stats.partnerTotal.toLocaleString()}\n\n${stats.difference > 0 ? `✅ 換對方付: ${Math.abs(stats.difference).toLocaleString()}` : stats.difference < 0 ? `⚠️ 換你付: ${Math.abs(stats.difference).toLocaleString()}` : `✅ 已結清`}\n\n📈 分類統計:${categoryList}`;
 
   SpreadsheetApp.getUi().alert(message);
+}
+
+// ==================== SettleUp CSV 匯入功能 ====================
+
+/**
+ * 匯入 SettleUp CSV 檔案
+ */
+function importSettleUpCSV() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 檢查是否已初始化
+  const expensesSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+  if (!expensesSheet) {
+    ui.alert('❌ 錯誤', '請先執行「初始化系統」！', ui.ButtonSet.OK);
+    return;
+  }
+
+  try {
+    // 取得試算表所在資料夾
+    const spreadsheetFile = DriveApp.getFileById(ss.getId());
+    const parentFolders = spreadsheetFile.getParents();
+
+    if (!parentFolders.hasNext()) {
+      ui.alert('❌ 錯誤', '無法取得試算表所在資料夾', ui.ButtonSet.OK);
+      return;
+    }
+
+    const folder = parentFolders.next();
+
+    // 尋找 SettleUp_transactions 試算表
+    let settleUpSpreadsheet = null;
+    const files = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
+    const fileList = [];
+
+    while (files.hasNext()) {
+      const file = files.next();
+      const fileName = file.getName();
+      fileList.push(fileName);
+
+      if (fileName.toLowerCase() === 'settleup_transactions') {
+        settleUpSpreadsheet = SpreadsheetApp.openById(file.getId());
+        break;
+      }
+    }
+
+    if (!settleUpSpreadsheet) {
+      ui.alert(
+        '❌ 找不到試算表',
+        '在此資料夾中找不到「SettleUp_transactions」試算表。\n\n' +
+        '資料夾中的試算表：\n' + fileList.slice(0, 10).join('\n') +
+        (fileList.length > 10 ? '\n... 還有 ' + (fileList.length - 10) + ' 個試算表' : '') +
+        '\n\n請確認：\n' +
+        '1. 已上傳 CSV 並轉換為 Google 試算表\n' +
+        '2. 試算表名稱為「SettleUp_transactions」（不區分大小寫）',
+        ui.ButtonSet.OK
+      );
+      return;
+    }
+
+    // 讀取試算表並提取所有名字
+    const sheet = settleUpSpreadsheet.getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+
+    if (data.length < 2) {
+      ui.alert('❌ 錯誤', '試算表中沒有資料', ui.ButtonSet.OK);
+      return;
+    }
+
+    // 從 "Who paid" 和 "For whom" 欄位提取所有名字
+    const namesSet = new Set();
+
+    // 過濾函數：判斷是否為有效的人名
+    function isValidName(name) {
+      if (!name || name.length === 0) return false;
+
+      // 排除標題列
+      if (name === 'Who paid' || name === 'For whom') return false;
+
+      // 排除包含分號的多人選項（例如：「佩樺;零幻」）
+      if (name.includes(';')) return false;
+
+      // 排除包含特殊字符的項目（商品名、商家名等）
+      const invalidPatterns = [
+        /【.*】/,           // 包含【】的商品名
+        /\[NT\$.*\]/,      // 包含價格標記
+        /商家:/,           // 商家前綴
+        /\$/,              // 包含金錢符號
+        /http/,            // 包含網址
+        /\d{3,}/,          // 包含3位以上連續數字
+        /x\s*\d+/i,        // 包含 x1, x2 等數量標記
+        /材料價|現作|皇家-/, // 商品相關關鍵字
+        /森林|商店|超市|市場|企業|公司|店面/ // 商家相關關鍵字
+      ];
+
+      for (const pattern of invalidPatterns) {
+        if (pattern.test(name)) return false;
+      }
+
+      // 名字長度應該合理（1-10個字）
+      if (name.length > 10) return false;
+
+      return true;
+    }
+
+    for (let i = 1; i < data.length; i++) {
+      const whoPaid = String(data[i][0] || '').trim();
+      const forWhom = String(data[i][3] || '').trim();
+
+      if (whoPaid && isValidName(whoPaid)) {
+        namesSet.add(whoPaid);
+      }
+
+      if (forWhom) {
+        // "For whom" 可能包含多個名字（分號分隔）
+        const names = forWhom.split(';').map(n => n.trim()).filter(n => n);
+        names.forEach(name => {
+          if (isValidName(name)) {
+            namesSet.add(name);
+          }
+        });
+      }
+    }
+
+    const names = Array.from(namesSet).sort();
+
+    if (names.length === 0) {
+      ui.alert('❌ 錯誤', '試算表中找不到任何名字', ui.ButtonSet.OK);
+      return;
+    }
+
+    // 將名字和試算表ID儲存到快取，供 HTML 對話框使用
+    // 不儲存完整資料，避免超過大小限制
+    const cache = CacheService.getUserCache();
+    cache.put('importNames', JSON.stringify(names), 300); // 5分鐘有效期
+    cache.put('importSpreadsheetId', settleUpSpreadsheet.getId(), 300);
+
+    // 顯示 HTML 對話框讓使用者選擇名字
+    const template = HtmlService.createTemplateFromFile('nameSelector');
+    template.names = names;
+    const html = template.evaluate()
+      .setWidth(400)
+      .setHeight(280);
+
+    ui.showModalDialog(html, '選擇你的名字');
+
+  } catch (e) {
+    ui.alert('❌ 錯誤', '匯入失敗：' + e.message, ui.ButtonSet.OK);
+    Logger.log('匯入錯誤：' + e.toString());
+  }
+}
+
+/**
+ * 使用者從對話框選擇名字後，處理實際匯入
+ * 由 nameSelector.html 呼叫
+ */
+function processImportWithName(myName) {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const expensesSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+  try {
+    // 從快取讀取試算表ID
+    const cache = CacheService.getUserCache();
+    const spreadsheetId = cache.get('importSpreadsheetId');
+
+    if (!spreadsheetId) {
+      throw new Error('快取資料已過期，請重新執行匯入');
+    }
+
+    // 重新讀取試算表資料
+    const settleUpSpreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = settleUpSpreadsheet.getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+
+    Logger.log('開始匯入，使用者名字：' + myName);
+    Logger.log('找到試算表，共 ' + data.length + ' 行');
+
+    const expenses = [];
+    let skippedTransfers = 0;
+    let errors = [];
+
+    // 從第 2 行開始（跳過標題列，索引 0 是標題）
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+
+      // 跳過空行
+      if (!row[0] && !row[1]) continue;
+
+      try {
+        const expense = parseSettleUpSheetRow(row, i + 1, myName);
+
+        // transfer 類型（債務結算）轉為結算記錄
+        if (expense.type === 'transfer') {
+          skippedTransfers++;
+          // 轉換為結算記錄格式
+          expense.recordType = 'settlement';
+          expense.category = '結算';
+          expense.item = '[💰結算] ' + expense.item;
+          // 結算記錄的分帳金額設為 0
+          expense.yourPart = 0;
+          expense.partnerPart = 0;
+          expense.splitType = '';
+        }
+
+        expenses.push(expense);
+      } catch (e) {
+        // 只記錄前 10 個錯誤的詳細資訊
+        if (errors.length < 10) {
+          Logger.log('第 ' + (i + 1) + ' 行錯誤: ' + e.message);
+        }
+        errors.push(`第 ${i + 1} 行：${e.message}`);
+      }
+    }
+
+    if (expenses.length === 0) {
+      ui.alert('⚠️ 無資料', '沒有可匯入的支出記錄。', ui.ButtonSet.OK);
+      return;
+    }
+
+    // 寫入試算表
+    const dataToWrite = expenses.map(exp => [
+      exp.date,
+      exp.item,
+      exp.amount,
+      exp.payer,
+      exp.actualPayer,
+      exp.yourPart,
+      exp.partnerPart,
+      exp.yourActualPaid || 0,  // 你實付
+      exp.partnerActualPaid || 0,  // 對方實付
+      exp.category,
+      false, // isRecurring
+      '', // recurringDay
+      new Date().getTime() + Math.random(), // ID
+      exp.recordType || 'expense' // 記錄類型
+    ]);
+
+    const lastRow = expensesSheet.getLastRow();
+    expensesSheet.getRange(lastRow + 1, 1, dataToWrite.length, 14).setValues(dataToWrite);
+
+    // 顯示結果
+    let message = `✅ 匯入完成！\n\n` +
+                  `✓ 成功匯入：${expenses.length} 筆記錄\n` +
+                  `- 其中結算記錄：${skippedTransfers} 筆\n`;
+
+    if (errors.length > 0) {
+      message += `\n⚠️ 錯誤記錄（${errors.length} 筆）：\n` + errors.slice(0, 5).join('\n');
+      if (errors.length > 5) {
+        message += `\n... 還有 ${errors.length - 5} 筆錯誤`;
+      }
+    }
+
+    ui.alert('📥 匯入結果', message, ui.ButtonSet.OK);
+
+    // 清除快取
+    cache.removeAll(['importNames', 'importSpreadsheetId']);
+
+  } catch (e) {
+    ui.alert('❌ 錯誤', '匯入失敗：' + e.message, ui.ButtonSet.OK);
+    Logger.log('匯入錯誤：' + e.toString());
+    throw e; // 回傳錯誤給 HTML 對話框
+  }
+}
+
+/**
+ * 解析 SettleUp 試算表的一行資料
+ * @param {Array} row - 試算表的一行（陣列格式）
+ * @param {number} rowNum - 行號（用於錯誤訊息）
+ * @param {string} myName - 使用者在 SettleUp 中的名字
+ */
+function parseSettleUpSheetRow(row, rowNum, myName) {
+  // 試算表格式：Who paid, Amount, Currency, For whom, Split amounts, Purpose, Category, Date & time, Exchange rate, Converted amount, Type, Receipt
+  // 索引：        0          1        2         3         4              5        6         7            8              9                10     11
+
+  if (row.length < 11) {
+    throw new Error('欄位數量不足');
+  }
+
+  const whoPaid = String(row[0] || '').trim();
+  const amountRaw = String(row[1] || '').trim();
+  const forWhom = String(row[3] || '').trim();
+  const splitAmounts = String(row[4] || '').trim();
+  const purpose = String(row[5] || '支出').trim();
+  const category = String(row[6] || '').trim() || autoDetectCategory(purpose);
+  const dateTime = row[7]; // 可能是 Date 物件或字串
+  const type = String(row[10] || '').trim();
+
+  // 解析金額：可能是單一數字或分號分隔的多個數字
+  let amount = 0;
+  let actualPayments = {}; // 記錄每個人實際付了多少
+
+  if (amountRaw.includes(';')) {
+    // Amount 包含分號：例如 "178;230"
+    const amounts = amountRaw.split(';').map(a => parseFloat(a.trim()) || 0);
+    amount = amounts.reduce((sum, a) => sum + a, 0); // 總金額
+
+    // 對應到 Who paid 的位置
+    if (whoPaid.includes(';')) {
+      const payers = whoPaid.split(';').map(p => p.trim());
+      for (let i = 0; i < payers.length && i < amounts.length; i++) {
+        actualPayments[payers[i]] = amounts[i];
+      }
+    }
+  } else {
+    // 單一金額
+    amount = parseFloat(amountRaw) || 0;
+  }
+
+  // 判斷付款人
+  let payer = '你';
+  let isSplitPayment = false;
+
+  if (Object.keys(actualPayments).length > 0) {
+    // 有 actualPayments 資料：表示多人分別付款
+    isSplitPayment = true;
+
+    // 檢查你付了多少
+    const yourPaid = actualPayments[myName] || 0;
+    const totalPaid = Object.values(actualPayments).reduce((sum, a) => sum + a, 0);
+    const partnerPaid = totalPaid - yourPaid;
+
+    if (yourPaid > 0 && partnerPaid > 0) {
+      payer = '共同';
+    } else if (yourPaid > 0) {
+      payer = '你';
+    } else {
+      payer = '對方';
+    }
+  } else if (whoPaid.includes(';')) {
+    // Who paid 包含多人但 Amount 沒有分號：取第一個人
+    const firstPayer = whoPaid.split(';')[0].trim();
+    if (type === 'transfer') {
+      if (firstPayer !== myName) {
+        payer = '對方';
+      }
+    } else {
+      if (firstPayer !== myName) {
+        payer = '對方';
+      }
+    }
+  } else if (type === 'transfer') {
+    // Transfer: whoPaid 墊付給 forWhom
+    if (whoPaid !== myName) {
+      payer = '對方';
+    }
+  } else {
+    // 一般支出：單人付款
+    if (whoPaid !== myName) {
+      payer = '對方';
+    }
+  }
+
+  // 解析分帳方式
+  const splitInfo = parseSplitInfo(forWhom, splitAmounts, amount, whoPaid, myName, isSplitPayment, actualPayments);
+
+  // 轉換日期格式
+  let date;
+  if (dateTime instanceof Date) {
+    // 如果是 Date 物件，直接格式化
+    date = Utilities.formatDate(dateTime, Session.getScriptTimeZone(), 'yyyy/M/d');
+  } else {
+    // 如果是字串，解析後格式化（2021-07-01 13:39:55 → 2021/7/1）
+    const dateStr = String(dateTime).split(' ')[0];
+    date = dateStr.replace(/-/g, '/').replace(/^(\d{4})\/0?(\d+)\/0?(\d+)$/, '$1/$2/$3');
+  }
+
+  return {
+    date: date,
+    item: purpose,
+    amount: amount,
+    category: category,
+    payer: payer,
+    splitType: splitInfo.splitType,
+    yourPart: splitInfo.yourPart,
+    partnerPart: splitInfo.partnerPart,
+    yourRatio: splitInfo.yourRatio,
+    partnerRatio: splitInfo.partnerRatio,
+    actualPayer: payer,
+    yourActualPaid: splitInfo.yourActualPaid || 0,
+    partnerActualPaid: splitInfo.partnerActualPaid || 0,
+    type: type
+  };
+}
+
+/**
+ * 解析分帳資訊
+ * @param {string} myName - 使用者在 SettleUp 中的名字
+ * @param {boolean} isSplitPayment - 是否為分開付款（Who paid 包含多人）
+ * @param {object} actualPayments - 實際付款金額對照表 {名字: 金額}
+ */
+function parseSplitInfo(forWhom, splitAmounts, totalAmount, whoPaid, myName, isSplitPayment, actualPayments) {
+  const people = forWhom.split(';').map(p => p.trim());
+  const amounts = splitAmounts.split(';').map(a => parseFloat(a) || 0);
+
+  // 判斷誰實際付款
+  let yourActualPaid = 0;
+  let partnerActualPaid = 0;
+
+  if (actualPayments && Object.keys(actualPayments).length > 0) {
+    // 有實際付款資料：使用 actualPayments（Amount 包含分號的情況）
+    yourActualPaid = actualPayments[myName] || 0;
+
+    // 計算對方付的總額（所有不是你的人）
+    for (const [name, paid] of Object.entries(actualPayments)) {
+      if (name !== myName) {
+        partnerActualPaid += paid;
+      }
+    }
+  } else if (whoPaid && whoPaid.includes(';')) {
+    // Who paid 包含多人，但沒有 actualPayments
+    // 假設：各自付款 = 各自應付（按比例分攤）
+    yourActualPaid = null;
+    partnerActualPaid = null;
+  } else if (whoPaid) {
+    // 單人付款
+    yourActualPaid = (whoPaid === myName) ? totalAmount : 0;
+    partnerActualPaid = (whoPaid !== myName) ? totalAmount : 0;
+  } else {
+    // 沒有 whoPaid 資訊，預設為你付款
+    yourActualPaid = totalAmount;
+    partnerActualPaid = 0;
+  }
+
+  // 只有一個人 → 100% 金額分帳
+  if (people.length === 1) {
+    if (people[0] === myName) {
+      const yPart = totalAmount;
+      const pPart = 0;
+      return {
+        splitType: '金額',
+        yourPart: yPart,
+        partnerPart: pPart,
+        yourRatio: '',
+        partnerRatio: '',
+        yourActualPaid: yourActualPaid !== null ? yourActualPaid : yPart,
+        partnerActualPaid: partnerActualPaid !== null ? partnerActualPaid : pPart
+      };
+    } else {
+      const yPart = 0;
+      const pPart = totalAmount;
+      return {
+        splitType: '金額',
+        yourPart: yPart,
+        partnerPart: pPart,
+        yourRatio: '',
+        partnerRatio: '',
+        yourActualPaid: yourActualPaid !== null ? yourActualPaid : yPart,
+        partnerActualPaid: partnerActualPaid !== null ? partnerActualPaid : pPart
+      };
+    }
+  }
+
+  // 兩個人 - 檢查是否均分
+  if (people.length === 2 && amounts.length === 2) {
+    const diff = Math.abs(amounts[0] - amounts[1]);
+
+    // 均分（差距小於 0.1）
+    if (diff < 0.1) {
+      // 找出你應分和對方應分的金額
+      const yourIndex = people.indexOf(myName);
+      const yPart = yourIndex >= 0 ? amounts[yourIndex] : totalAmount / 2;
+      const pPart = totalAmount - yPart;
+
+      return {
+        splitType: '自動均分',
+        yourPart: yPart,
+        partnerPart: pPart,
+        yourRatio: '',
+        partnerRatio: '',
+        yourActualPaid: yourActualPaid !== null ? yourActualPaid : yPart,
+        partnerActualPaid: partnerActualPaid !== null ? partnerActualPaid : pPart
+      };
+    }
+
+    // 不等額 - 金額分帳
+    const yourIndex = people.indexOf(myName);
+    let partnerIndex = -1;
+
+    // 找到對方的索引（不是自己的那個）
+    for (let i = 0; i < people.length; i++) {
+      if (people[i] !== myName) {
+        partnerIndex = i;
+        break;
+      }
+    }
+
+    const yPart = yourIndex >= 0 ? amounts[yourIndex] : 0;
+    const pPart = partnerIndex >= 0 ? amounts[partnerIndex] : 0;
+
+    return {
+      splitType: '金額',
+      yourPart: yPart,
+      partnerPart: pPart,
+      yourRatio: '',
+      partnerRatio: '',
+      yourActualPaid: yourActualPaid !== null ? yourActualPaid : yPart,
+      partnerActualPaid: partnerActualPaid !== null ? partnerActualPaid : pPart
+    };
+  }
+
+  // 預設均分
+  const halfAmount = totalAmount / 2;
+  return {
+    splitType: '自動均分',
+    yourPart: halfAmount,
+    partnerPart: halfAmount,
+    yourRatio: '',
+    partnerRatio: '',
+    yourActualPaid: yourActualPaid !== null ? yourActualPaid : halfAmount,
+    partnerActualPaid: partnerActualPaid !== null ? partnerActualPaid : halfAmount
+  };
+}
+
+/**
+ * CSV 解析器（處理引號和空欄位）
+ */
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      // 保留空字串，不要 trim 掉空欄位
+      result.push(current.replace(/^"/, '').replace(/"$/, '').trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  // 最後一個欄位
+  result.push(current.replace(/^"/, '').replace(/"$/, '').trim());
+
+  return result;
+}
+
+/**
+ * 根據項目名稱自動偵測分類
+ */
+function autoDetectCategory(item) {
+  const keywords = {
+    '飲食': ['早餐', '午餐', '晚餐', '點心', '飲料', '咖啡', '麥當勞', '全聯', '吐司', '泡泡冰', '水煎包'],
+    '交通': ['車票', '交通', '停車', '台鐵', '高鐵', '捷運', 'Uber', '油錢'],
+    '居住': ['房租', '水費', '電費', '瓦斯', '網路', '日用品', '衛生紙'],
+    '娛樂': ['書籍', '課程', 'APP', 'Hahow', '旅遊', '電影', '遊戲'],
+    '服飾': ['衣服', '鞋子', '包包', '美髮', '美容', '化妝', '保養'],
+    '其他': ['醫療', '保險', '稅']
+  };
+
+  for (const [category, words] of Object.entries(keywords)) {
+    for (const word of words) {
+      if (item.includes(word)) {
+        return category;
+      }
+    }
+  }
+
+  return '其他';
+}
+
+// ==================== 結算功能 ====================
+
+/**
+ * 新增結算記錄
+ * @param {string} direction - 結算方向：'partner_pay_me' 或 'i_pay_partner'
+ * @param {number} amount - 結算金額
+ * @param {string} date - 結算日期 (yyyy-mm-dd)
+ * @param {string} note - 備註（選填）
+ */
+function addSettlement(direction, amount, date, note) {
+  // 檢查頻率限制
+  checkRateLimit('addSettlement');
+
+  // 驗證輸入
+  if (!validateNumber(amount, 0.01, 9999999)) {
+    throw new Error('金額無效（必須介於 0.01 到 9,999,999）');
+  }
+
+  if (!['partner_pay_me', 'i_pay_partner'].includes(direction)) {
+    throw new Error('結算方向無效');
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+  const id = new Date().getTime();
+
+  // 根據方向設定項目名稱
+  let item = '';
+  if (direction === 'partner_pay_me') {
+    item = '[💰結算] 對方還款';
+  } else {
+    item = '[💰結算] 我還款';
+  }
+
+  if (note) {
+    item += ' - ' + escapeHtml(note.trim());
+  }
+
+  // 結算記錄的欄位
+  const row = [
+    date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    item,
+    amount,
+    direction === 'partner_pay_me' ? '對方' : '你',  // 付款人（誰給錢）
+    direction === 'partner_pay_me' ? '對方' : '你',  // 實際付款人
+    0,  // 你的部分
+    0,  // 對方的部分
+    0,  // 你實付
+    0,  // 對方實付
+    '結算',  // 分類
+    false,  // 是否週期
+    '',  // 週期日期
+    id,
+    'settlement'  // 記錄類型：結算
+  ];
+
+  sheet.appendRow(row);
+
+  const lastRow = sheet.getLastRow();
+  sheet.getRange(lastRow, 1, 1, 14).setHorizontalAlignment('center');
+
+  // 設定特殊背景色（淺綠色）
+  sheet.getRange(lastRow, 1, 1, 14).setBackground('#d1fae5');
+
+  return {
+    success: true,
+    message: '結算記錄已新增'
+  };
+}
+
+/**
+ * 清空所有支出記錄（保留標題列）
+ * ⚠️ 警告：此操作會刪除所有記錄，無法復原！
+ */
+function clearAllExpenses() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+  if (!sheet) {
+    Logger.log('找不到支出記錄工作表');
+    return;
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    // 清除內容而不是刪除行（保留格式和公式）
+    const numCols = sheet.getLastColumn();
+    sheet.getRange(2, 1, lastRow - 1, numCols).clearContent();
+    Logger.log('✅ 已清空 ' + (lastRow - 1) + ' 筆記錄的內容');
+  } else {
+    Logger.log('⚠️ 沒有記錄可以清空');
+  }
+}
+
+/**
+ * 診斷函數：分析支出記錄的分帳狀況
+ * 在 Apps Script 編輯器中執行此函數可以看到詳細統計
+ */
+function diagnoseExpenseData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+  if (!sheet) {
+    Logger.log('找不到支出記錄工作表');
+    return;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  // 找出欄位索引
+  const colIndex = {
+    item: headers.indexOf('項目'),
+    amount: headers.indexOf('金額'),
+    yourPart: headers.indexOf('你的部分'),
+    partnerPart: headers.indexOf('對方的部分'),
+    yourActualPaid: headers.indexOf('你實付'),
+    partnerActualPaid: headers.indexOf('對方實付'),
+    recordType: headers.indexOf('記錄類型')
+  };
+
+  let totalExpenses = 0;
+  let totalSettlements = 0;
+  let yourPartSum = 0;
+  let partnerPartSum = 0;
+  let yourActualSum = 0;
+  let partnerActualSum = 0;
+  let emptyPartCount = 0; // yourPart 和 partnerPart 都是空的記錄數
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const recordType = row[colIndex.recordType];
+
+    if (recordType === 'settlement') {
+      totalSettlements++;
+      continue;
+    }
+
+    totalExpenses++;
+
+    const yourPart = row[colIndex.yourPart];
+    const partnerPart = row[colIndex.partnerPart];
+    const yourActual = Number(row[colIndex.yourActualPaid]) || 0;
+    const partnerActual = Number(row[colIndex.partnerActualPaid]) || 0;
+
+    yourPartSum += Number(yourPart) || 0;
+    partnerPartSum += Number(partnerPart) || 0;
+    yourActualSum += yourActual;
+    partnerActualSum += partnerActual;
+
+    // 檢查是否為空
+    if ((yourPart === '' || yourPart === null || yourPart === undefined) &&
+        (partnerPart === '' || partnerPart === null || partnerPart === undefined)) {
+      emptyPartCount++;
+      if (i < 5) { // 顯示前幾筆空記錄
+        Logger.log('空分帳記錄範例 ' + i + ': ' + row[colIndex.item] + ', 金額: ' + row[colIndex.amount]);
+      }
+    }
+  }
+
+  Logger.log('========== 診斷結果 ==========');
+  Logger.log('支出記錄總數: ' + totalExpenses);
+  Logger.log('結算記錄總數: ' + totalSettlements);
+  Logger.log('');
+  Logger.log('你應付總額: ' + yourPartSum.toFixed(2));
+  Logger.log('對方應付總額: ' + partnerPartSum.toFixed(2));
+  Logger.log('應付總和: ' + (yourPartSum + partnerPartSum).toFixed(2));
+  Logger.log('');
+  Logger.log('你實付總額: ' + yourActualSum.toFixed(2));
+  Logger.log('對方實付總額: ' + partnerActualSum.toFixed(2));
+  Logger.log('實付總和: ' + (yourActualSum + partnerActualSum).toFixed(2));
+  Logger.log('');
+  Logger.log('分帳為空的記錄數: ' + emptyPartCount + ' (' + (emptyPartCount / totalExpenses * 100).toFixed(1) + '%)');
+  Logger.log('============================');
+
+  return {
+    totalExpenses: totalExpenses,
+    totalSettlements: totalSettlements,
+    yourPartSum: yourPartSum,
+    partnerPartSum: partnerPartSum,
+    yourActualSum: yourActualSum,
+    partnerActualSum: partnerActualSum,
+    emptyPartCount: emptyPartCount
+  };
 }

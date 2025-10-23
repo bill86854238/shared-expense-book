@@ -3,10 +3,13 @@
 <head>
   <base target="_top">
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <!-- viewport 由 Code.gs 的 addMetaTag 設定 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>共同記帳</title>
+  <title>共同記帳 v2.15</title>
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
     google.charts.load('current', {'packages':['corechart', 'line']});
@@ -1118,6 +1121,19 @@
         flex: 1;
         font-size: 0.95em;
       }
+
+      /* 移除日期和時間輸入框的 icon */
+      input[type="date"]::-webkit-calendar-picker-indicator,
+      input[type="time"]::-webkit-calendar-picker-indicator {
+        display: none;
+        -webkit-appearance: none;
+      }
+
+      input[type="date"],
+      input[type="time"] {
+        -webkit-appearance: none;
+        -moz-appearance: textfield;
+      }
     }
 
     /* 極小螢幕 - 400px 以下 */
@@ -1168,9 +1184,10 @@
       <div class="stat-card balance" style="width: 100%; max-width: 100%;">
         <div class="stat-icon">💰</div>
         <div class="stat-label">結算</div>
-        <div class="stat-value" id="balance">已結清</div>
+        <div class="stat-value" id="balance" style="color: #999;">結算中...</div>
       </div>
     </div>
+
 
     <!-- 新增支出表單 -->
     <div class="form-section">
@@ -1179,15 +1196,17 @@
       <!-- 快速記账按钮 -->
       <div style="margin-bottom: 20px;">
         <div style="font-size: 0.9em; color: #666; margin-bottom: 8px; font-weight: 500;">⚡ 快速記帳</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-          <button class="quick-btn" onclick="quickExpense('早餐', 50, '飲食')">🍳 早餐 $50</button>
-          <button class="quick-btn" onclick="quickExpense('午餐', 100, '飲食')">🍱 午餐 $100</button>
-          <button class="quick-btn" onclick="quickExpense('晚餐', 150, '飲食')">🍽️ 晚餐 $150</button>
-          <button class="quick-btn" onclick="quickExpense('咖啡', 60, '飲食')">☕ 咖啡 $60</button>
-          <button class="quick-btn" onclick="quickExpense('交通', 20, '交通')">🚇 交通 $20</button>
-          <button class="quick-btn" onclick="quickExpense('停車', 50, '交通')">🅿️ 停車 $50</button>
-          <button class="quick-btn" onclick="quickExpense('點心', 80, '飲食')">🍰 點心 $80</button>
-          <button class="quick-btn" onclick="quickExpense('飲料', 50, '飲食')">🧋 飲料 $50</button>
+        <div id="quickExpenseButtons" style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <!-- 按鈕將從試算表動態載入 -->
+          <div style="color: #999; font-size: 0.9em;">載入中...</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>日期時間</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <input type="date" id="expenseDate" style="width: 100%; min-width: 0; cursor: pointer;">
+          <input type="time" id="expenseTime" style="width: 100%; min-width: 0; cursor: pointer;">
         </div>
       </div>
 
@@ -1217,14 +1236,14 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
             <label style="font-size: 0.9em; color: #666; font-weight: normal;">你付了</label>
-            <input type="number" id="yourActualPaid" placeholder="0" min="0" step="0.01">
+            <input type="number" id="yourActualPaid" placeholder="0" min="0" step="0.01" oninput="updateUnequalPaymentHint()">
           </div>
           <div>
             <label style="font-size: 0.9em; color: #666; font-weight: normal;">對方付了</label>
-            <input type="number" id="partnerActualPaid" placeholder="0" min="0" step="0.01">
+            <input type="number" id="partnerActualPaid" placeholder="0" min="0" step="0.01" oninput="updateUnequalPaymentHint()">
           </div>
         </div>
-        <div style="margin-top: 8px; font-size: 0.85em; color: #666;">
+        <div id="unequalPaymentHint" style="margin-top: 8px; font-size: 0.85em; color: #666;">
           💡 提示：兩者總和必須等於上方金額
         </div>
       </div>
@@ -1284,13 +1303,14 @@
 
       <div class="form-group">
         <label>分類</label>
-        <select id="category">
-          <option value="飲食">🍜 飲食</option>
-          <option value="居住">🏠 居住</option>
-          <option value="交通">🚗 交通</option>
-          <option value="娛樂">🎮 娛樂</option>
-          <option value="其他">📦 其他</option>
-        </select>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <select id="mainCategory" onchange="updateSubCategories()">
+            <option value="">載入中...</option>
+          </select>
+          <select id="subCategory" style="display: none;">
+            <option value="">（選填子分類）</option>
+          </select>
+        </div>
       </div>
 
       <!-- 週期支出設定 -->
@@ -1309,7 +1329,10 @@
         </small>
       </div>
 
-      <button class="btn btn-primary" onclick="addExpense()">新增支出</button>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-primary" onclick="addExpense()" style="flex: 1;">新增支出</button>
+        <button class="btn" onclick="openSettlementModal()" style="flex: 1; background: #10b981; color: white;">💰 記錄結算</button>
+      </div>
     </div>
 
     <!-- 儀表板 -->
@@ -1369,11 +1392,11 @@
         </div>
         <div class="dashboard-content">
           <div class="dashboard-row">
-            <span class="dashboard-label">👤 你付了</span>
+            <span class="dashboard-label">👤 你應負擔</span>
             <span class="dashboard-value" id="yourTotal">$0</span>
           </div>
           <div class="dashboard-row">
-            <span class="dashboard-label">👤 對方付了</span>
+            <span class="dashboard-label">👤 對方應負擔</span>
             <span class="dashboard-value" id="partnerTotal">$0</span>
           </div>
           <div class="dashboard-row">
@@ -1419,6 +1442,7 @@
             <option value="居住">🏠 居住</option>
             <option value="交通">🚗 交通</option>
             <option value="娛樂">🎮 娛樂</option>
+            <option value="服飾">👔 服飾</option>
             <option value="其他">📦 其他</option>
           </select>
         </div>
@@ -1449,7 +1473,6 @@
         <span style="color: #999; font-size: 0.9em;" id="recordCount">共 0 筆記錄</span>
         <div style="display: flex; gap: 8px;">
           <button onclick="showCharts()" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9em;">📊 圖表</button>
-          <button onclick="exportData()" style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9em;">💾 匯出</button>
         </div>
       </div>
     </div>
@@ -1491,12 +1514,55 @@
       </div>
     </div>
 
+    <!-- 結算 Modal -->
+    <div id="settlementModal" class="modal hidden">
+      <div class="modal-content" style="max-width: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2 style="margin: 0;">💰 記錄結算</h2>
+          <button onclick="closeSettlementModal()" style="background: none; border: none; font-size: 1.5em; cursor: pointer;">×</button>
+        </div>
+
+        <div class="form-group">
+          <label>結算方向</label>
+          <select id="settlementDirection" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+            <option value="partner_pay_me">✅ 對方還我錢</option>
+            <option value="i_pay_partner">✅ 我還對方錢</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>結算金額</label>
+          <input type="number" id="settlementAmount" placeholder="輸入金額" min="0.01" step="0.01" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+        </div>
+
+        <div class="form-group">
+          <label>日期（選填）</label>
+          <input type="date" id="settlementDate" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+        </div>
+
+        <div class="form-group">
+          <label>備註（選填）</label>
+          <input type="text" id="settlementNote" placeholder="例如：現金還款" maxlength="50" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;">
+        </div>
+
+        <button class="btn btn-primary" onclick="addSettlementRecord()" style="width: 100%;">確認記錄</button>
+      </div>
+    </div>
+
     <!-- 編輯支出 Modal -->
     <div id="editExpenseModal" class="modal hidden">
       <div class="modal-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <h2 style="margin: 0;">✏️ 編輯支出</h2>
           <button onclick="closeEditExpenseModal()" style="background: none; border: none; font-size: 1.8em; cursor: pointer; color: #999; padding: 5px 10px; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#999'">×</button>
+        </div>
+
+        <div class="form-group">
+          <label>日期時間</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <input type="date" id="editExpenseDate" style="width: 100%; min-width: 0; cursor: pointer;">
+            <input type="time" id="editExpenseTime" style="width: 100%; min-width: 0; cursor: pointer;">
+          </div>
         </div>
 
         <div class="form-group">
@@ -1540,13 +1606,14 @@
 
         <div class="form-group">
           <label>分類</label>
-          <select id="editCategory">
-            <option value="飲食">🍜 飲食</option>
-            <option value="居住">🏠 居住</option>
-            <option value="交通">🚗 交通</option>
-            <option value="娛樂">🎮 娛樂</option>
-            <option value="其他">📦 其他</option>
-          </select>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <select id="editMainCategory" onchange="updateEditSubCategories()">
+              <option value="">載入中...</option>
+            </select>
+            <select id="editSubCategory" style="display: none;">
+              <option value="">（選填子分類）</option>
+            </select>
+          </div>
         </div>
 
         <input type="hidden" id="editExpenseId">
@@ -1597,7 +1664,11 @@
     let totalCount = 0; // 總記錄數
     let hasMoreData = false; // 是否還有更多資料
     let isLoading = false; // 是否正在載入
+    let allExpensesLoaded = false; // allExpenses 是否已載入完成
     const PAGE_SIZE = 50; // 每次載入 50 筆
+    let yourName = '你'; // 當前使用者的名稱（從 Google 帳號取得）
+    let partnerName = '對方'; // 對方的名稱（從設定讀取）
+    let categoriesData = {}; // 儲存分類資料結構 {主分類: [子分類...]}
 
     // ==================== 工具函數 ====================
 
@@ -1613,6 +1684,132 @@
         return '$' + k + 'K';
       }
       return '$' + num.toLocaleString();
+    }
+
+    /**
+     * 載入分類列表（兩個下拉選單）
+     */
+    function loadCategories() {
+      google.script.run
+        .withSuccessHandler(function(categories) {
+          // 分類表情符號對應
+          const categoryIcons = {
+            '飲食': '🍜',
+            '居住': '🏠',
+            '交通': '🚗',
+            '娛樂': '🎮',
+            '寵物': '🐾',
+            '服飾': '👔',
+            '其他': '📦'
+          };
+
+          // 將分類分組處理
+          categoriesData = {}; // 清空並重建
+
+          categories.forEach(function(cat) {
+            if (cat.includes('>')) {
+              // 子分類
+              const parts = cat.split('>');
+              const parent = parts[0].trim();
+              const child = parts[1].trim();
+
+              if (!categoriesData[parent]) {
+                categoriesData[parent] = [];
+              }
+              categoriesData[parent].push(child);
+            } else {
+              // 主分類（如果還沒有，初始化為空陣列）
+              if (!categoriesData[cat]) {
+                categoriesData[cat] = [];
+              }
+            }
+          });
+
+          // 填入主分類下拉選單（新增支出）
+          const mainCategorySelect = document.getElementById('mainCategory');
+          mainCategorySelect.innerHTML = '';
+
+          Object.keys(categoriesData).forEach(function(mainCat) {
+            const icon = categoryIcons[mainCat] || '📦';
+            const option = document.createElement('option');
+            option.value = mainCat;
+            option.textContent = icon + ' ' + mainCat;
+            mainCategorySelect.appendChild(option);
+          });
+
+          // 填入主分類下拉選單（編輯支出）
+          const editMainCategorySelect = document.getElementById('editMainCategory');
+          if (editMainCategorySelect) {
+            editMainCategorySelect.innerHTML = '';
+            Object.keys(categoriesData).forEach(function(mainCat) {
+              const icon = categoryIcons[mainCat] || '📦';
+              const option = document.createElement('option');
+              option.value = mainCat;
+              option.textContent = icon + ' ' + mainCat;
+              editMainCategorySelect.appendChild(option);
+            });
+          }
+
+          // 初始化子分類（第一個主分類）
+          if (Object.keys(categoriesData).length > 0) {
+            updateSubCategories();
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('載入分類失敗:', error);
+          showToast('載入分類失敗', 'error');
+        })
+        .getCategories();
+    }
+
+    /**
+     * 更新子分類下拉選單（新增支出）
+     */
+    function updateSubCategories() {
+      const mainCategory = document.getElementById('mainCategory').value;
+      const subCategorySelect = document.getElementById('subCategory');
+
+      if (!mainCategory || !categoriesData[mainCategory] || categoriesData[mainCategory].length === 0) {
+        // 沒有子分類，隱藏子分類選單
+        subCategorySelect.style.display = 'none';
+        return;
+      }
+
+      // 有子分類，顯示並填入選項
+      subCategorySelect.style.display = 'block';
+      subCategorySelect.innerHTML = '<option value="">（選填子分類）</option>';
+
+      categoriesData[mainCategory].forEach(function(subCat) {
+        const option = document.createElement('option');
+        option.value = subCat;
+        option.textContent = subCat;
+        subCategorySelect.appendChild(option);
+      });
+    }
+
+    /**
+     * 更新子分類下拉選單（編輯支出）
+     */
+    function updateEditSubCategories() {
+      const mainCategory = document.getElementById('editMainCategory').value;
+      const subCategorySelect = document.getElementById('editSubCategory');
+
+      if (!mainCategory || !categoriesData[mainCategory] || categoriesData[mainCategory].length === 0) {
+        // 沒有子分類，隱藏子分類選單
+        subCategorySelect.style.display = 'none';
+        return;
+      }
+
+      // 有子分類，顯示並填入選項
+      subCategorySelect.style.display = 'block';
+      subCategorySelect.innerHTML = '<option value="">（選填子分類）</option>';
+
+      categoriesData[mainCategory].forEach(function(subCat) {
+        const option = document.createElement('option');
+        option.value = subCat;
+        option.textContent = subCat;
+        subCategorySelect.appendChild(option);
+      });
     }
 
     // ==================== 安全性函數 ====================
@@ -1691,6 +1888,9 @@
     }
 
     function loadData() {
+      // 標記 allExpenses 尚未載入完成
+      allExpensesLoaded = false;
+
       // 載入第一頁資料（支出記錄頁面）
       loadPagedExpenses(0);
 
@@ -1698,7 +1898,10 @@
       google.script.run
         .withSuccessHandler(function(expenses) {
           allExpenses = expenses;
+          allExpensesLoaded = true;
           updateDashboard(allExpenses);
+          // 重新更新 UI 以顯示正確的結算
+          updateUI(displayedExpenses);
         })
         .withFailureHandler(showError)
         .getAllExpenses();
@@ -1749,12 +1952,44 @@
         .getCurrentUser();
     }
 
+    // 載入快速記帳按鈕
+    function loadQuickExpenseButtons() {
+      google.script.run
+        .withSuccessHandler(function(buttons) {
+          const container = document.getElementById('quickExpenseButtons');
+
+          if (!buttons || buttons.length === 0) {
+            container.innerHTML = '<div style="color: #999; font-size: 0.9em;">尚未設定快速記帳按鈕</div>';
+            return;
+          }
+
+          // 清空容器並動態生成按鈕
+          container.innerHTML = '';
+          buttons.forEach(function(btn) {
+            const button = document.createElement('button');
+            button.className = 'quick-btn';
+            button.onclick = function() {
+              quickExpense(btn.item, btn.amount, btn.category);
+            };
+            button.textContent = btn.emoji + ' ' + btn.item + ' $' + btn.amount;
+            container.appendChild(button);
+          });
+        })
+        .withFailureHandler(function(error) {
+          console.error('載入快速記帳按鈕失敗:', error);
+          document.getElementById('quickExpenseButtons').innerHTML = '<div style="color: #999; font-size: 0.9em;">載入失敗</div>';
+        })
+        .getQuickExpenseButtons();
+    }
+
     // 顯示使用者資訊
     function displayUserInfo(user) {
       const userInfoEl = document.getElementById('userInfo');
 
       // 儲存使用者資訊到全局變數
       window.currentUser = user;
+      yourName = user.name || '你';
+      partnerName = user.partnerName || '對方';
 
       // 驗證並轉義所有用戶數據
       const safePhotoUrl = validateImageUrl(user.photoUrl);
@@ -1769,6 +2004,23 @@
         '</div>' +
         '<button class="members-btn" onclick="openMembersModal()">成員</button>' +
         '<button class="logout-btn" onclick="logout()">登出</button>';
+
+      // 更新 UI 上的名稱標籤
+      updateNameLabels();
+    }
+
+    // 更新 UI 上的名稱標籤
+    function updateNameLabels() {
+      // 更新儀表板的標籤
+      const yourTotalLabel = document.querySelector('#yourTotal').previousElementSibling;
+      const partnerTotalLabel = document.querySelector('#partnerTotal').previousElementSibling;
+
+      if (yourTotalLabel && yourTotalLabel.classList.contains('dashboard-label')) {
+        yourTotalLabel.textContent = '👤 ' + yourName + '應負擔';
+      }
+      if (partnerTotalLabel && partnerTotalLabel.classList.contains('dashboard-label')) {
+        partnerTotalLabel.textContent = '👤 ' + partnerName + '應負擔';
+      }
     }
 
     // 登出功能
@@ -1776,6 +2028,7 @@
       if (confirm('確定要登出嗎？')) {
         // 清除本地數據
         allExpenses = [];
+        allExpensesLoaded = false;
         filteredExpenses = [];
         window.currentUser = null;
 
@@ -1846,6 +2099,19 @@
 
     // 即時搜尋
     document.addEventListener('DOMContentLoaded', function() {
+      // 版本檢查
+      const VERSION = 'v2.15.70';
+
+      // 設定日期和時間的預設值為當下
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const timeStr = now.toTimeString().substring(0, 5); // HH:MM
+      document.getElementById('expenseDate').value = dateStr;
+      document.getElementById('expenseTime').value = timeStr;
+
+      // 載入分類列表
+      loadCategories();
+
       document.getElementById('searchInput').addEventListener('input', function() {
         applyFilters();
       });
@@ -1858,43 +2124,90 @@
       let partnerShouldPay = 0; // 對方應該負擔的總金額
       let yourActualPaid = 0;   // 你實際付出的總金額
       let partnerActualPaid = 0; // 對方實際付出的總金額
+      let settlementAdjustment = 0; // 結算調整：對方還我的錢 - 我還對方的錢
+      let settlementCount = 0; // 結算記錄數量
+      let settlementDetails = []; // 結算記錄明細
+      let expenseCount = 0; // 支出記錄數量
 
       // 計算總計（使用全部資料）
-      allExpenses.forEach(function(exp) {
-        // 應該負擔的金額
-        yourShouldPay += Number(exp.yourPart) || 0;
-        partnerShouldPay += Number(exp.partnerPart) || 0;
-
-        // 實際付出的金額
-        // 優先使用資料庫中記錄的實際付款金額（新功能）
-        if (exp.yourActualPaid !== null && exp.yourActualPaid !== undefined &&
-            exp.partnerActualPaid !== null && exp.partnerActualPaid !== undefined) {
-          // 使用資料庫中的實際付款金額（支援不等額墊付）
-          yourActualPaid += Number(exp.yourActualPaid) || 0;
-          partnerActualPaid += Number(exp.partnerActualPaid) || 0;
-        } else {
-          // 向下相容：舊資料根據 actualPayer 推算
+      // 確保 allExpenses 存在且為陣列
+      if (allExpenses && Array.isArray(allExpenses)) {
+        allExpenses.forEach(function(exp) {
+        // 檢查是否為結算記錄
+        if (exp.recordType === 'settlement' || exp.category === '結算') {
+          // 結算記錄：直接調整餘額
           const amount = Number(exp.amount) || 0;
-          const actualPayer = exp.actualPayer || exp.payer;
+          settlementCount++;
+          settlementDetails.push(exp.payer + '付' + amount + ' (' + exp.item + ')');
 
-          if (actualPayer === '你') {
-            // 我先付了全額
-            yourActualPaid += amount;
-          } else if (actualPayer === '對方') {
-            // 對方先付了全額
-            partnerActualPaid += amount;
-          } else if (actualPayer === '各自') {
-            // 各付各的：按照應負擔金額付
-            yourActualPaid += Number(exp.yourPart) || 0;
-            partnerActualPaid += Number(exp.partnerPart) || 0;
+          if (exp.payer === '對方') {
+            // 對方墊付給我 → 我欠對方 → settlementAdjustment 減少
+            settlementAdjustment -= amount;
+          } else if (exp.payer === '你') {
+            // 我墊付給對方 → 對方欠我 → settlementAdjustment 增加
+            settlementAdjustment += amount;
           }
-          // 其他情況（不等額等）：不計入
-        }
-      });
+        } else {
+          // 一般支出記錄：原有邏輯
+          expenseCount++;
 
-      // 結算邏輯：我實際付的 - 我應該付的 = 對方欠我的
-      const yourBalance = yourActualPaid - yourShouldPay;
-      const partnerBalance = partnerActualPaid - partnerShouldPay;
+          // 應該負擔的金額
+          // 如果是自動均分且 yourPart 是空字串，使用總金額的一半
+          if (exp.splitType === '自動均分' && (exp.yourPart === '' || exp.yourPart === null || exp.yourPart === undefined)) {
+            const halfAmount = (Number(exp.amount) || 0) / 2;
+            yourShouldPay += halfAmount;
+            partnerShouldPay += halfAmount;
+          } else {
+            yourShouldPay += Number(exp.yourPart) || 0;
+            partnerShouldPay += Number(exp.partnerPart) || 0;
+          }
+
+          // 實際付出的金額
+          // 優先使用資料庫中記錄的實際付款金額（新功能）
+          if (exp.yourActualPaid !== null && exp.yourActualPaid !== undefined &&
+              exp.partnerActualPaid !== null && exp.partnerActualPaid !== undefined) {
+            // 使用資料庫中的實際付款金額（支援不等額墊付）
+            yourActualPaid += Number(exp.yourActualPaid) || 0;
+            partnerActualPaid += Number(exp.partnerActualPaid) || 0;
+          } else {
+            // 向下相容：舊資料根據 actualPayer 推算
+            const amount = Number(exp.amount) || 0;
+            const actualPayer = exp.actualPayer || exp.payer;
+
+            if (actualPayer === '你') {
+              // 我先付了全額
+              yourActualPaid += amount;
+            } else if (actualPayer === '對方') {
+              // 對方先付了全額
+              partnerActualPaid += amount;
+            } else if (actualPayer === '各自') {
+              // 各付各的：按照應負擔金額付
+              yourActualPaid += Number(exp.yourPart) || 0;
+              partnerActualPaid += Number(exp.partnerPart) || 0;
+            }
+            // 其他情況（不等額等）：不計入
+          }
+        }
+        });
+      }
+
+      // 調試資訊
+      console.log('=== 餘額計算調試 ===');
+      console.log('你實付:', yourActualPaid);
+      console.log('你應付:', yourShouldPay);
+      console.log('對方實付:', partnerActualPaid);
+      console.log('對方應付:', partnerShouldPay);
+      console.log('結算調整:', settlementAdjustment);
+      console.log('支出產生的餘額:', yourActualPaid - yourShouldPay);
+
+      // 結算邏輯：(我實際付的 - 我應該付的) + 結算調整 = 對方欠我的
+      // settlementAdjustment 正值表示我還對方的錢，會增加餘額（減少我的債務）
+      // settlementAdjustment 負值表示對方還我的錢，會減少餘額（減少對方欠我的）
+      const yourBalance = (yourActualPaid - yourShouldPay) + settlementAdjustment;
+      const partnerBalance = (partnerActualPaid - partnerShouldPay) - settlementAdjustment;
+
+      console.log('最終餘額:', yourBalance);
+      console.log('==================');
 
       const total = yourShouldPay + partnerShouldPay;
 
@@ -1903,7 +2216,11 @@
       document.getElementById('totalExpense').textContent = formatMoney(total);
 
       const balanceEl = document.getElementById('balance');
-      if (allExpenses.length === 0) {
+      if (!allExpensesLoaded) {
+        // 資料尚未載入完成
+        balanceEl.textContent = '結算中...';
+        balanceEl.style.color = '#999';
+      } else if (!allExpenses || allExpenses.length === 0) {
         balanceEl.textContent = '尚無記錄';
         balanceEl.style.color = '#999';
       } else if (Math.abs(yourBalance) < 0.01) {
@@ -1911,14 +2228,15 @@
         balanceEl.textContent = '已結清 ✨';
         balanceEl.style.color = '';
       } else if (yourBalance > 0) {
-        // 我付得比我該付的多 → 對方欠我
-        balanceEl.textContent = '對方欠你 ' + formatMoney(Math.abs(yourBalance));
+        // 我付得比我該付的多 → 對方應付給我
+        balanceEl.textContent = partnerName + ' 應付你 ' + formatMoney(Math.abs(yourBalance));
         balanceEl.style.color = '';
       } else {
-        // 我付得比我該付的少 → 我欠對方
-        balanceEl.textContent = '你欠對方 ' + formatMoney(Math.abs(yourBalance));
+        // 我付得比我該付的少 → 我應付給對方
+        balanceEl.textContent = '你應付 ' + partnerName + ' ' + formatMoney(Math.abs(yourBalance));
         balanceEl.style.color = '';
       }
+
 
       // 更新記錄數量（顯示總數）
       document.getElementById('recordCount').textContent = '共 ' + totalCount + ' 筆記錄（已載入 ' + displayedExpenses.length + ' 筆）';
@@ -1956,6 +2274,7 @@
         '居住': '🏠',
         '交通': '🚗',
         '娛樂': '🎮',
+        '服飾': '👔',
         '其他': '📦'
       };
 
@@ -1984,11 +2303,15 @@
           const safeCategory = escapeHtml(exp.category);
           const safePayer = escapeHtml(exp.payer);
 
+          // 提取時間部分（如果日期包含時間）
+          const timeStr = exp.date.includes(':') ? exp.date.split(' ')[1].substring(0, 5) : '';
+          const timeDisplay = timeStr ? ' · ' + timeStr : '';
+
           html += '<div class="expense-item ' + className + '">' +
             '<div class="expense-info">' +
               '<strong>' + icon + ' ' + safeItem + '</strong>' +
               '<div style="font-size: 0.82em; color: #6b7280; margin-top: 2px;">' +
-                safeCategory + ' · ' + safePayer +
+                safeCategory + ' · ' + safePayer + timeDisplay +
                 splitInfo +
               '</div>' +
             '</div>' +
@@ -2064,9 +2387,32 @@
 
       // 填入編輯表單
       document.getElementById('editExpenseId').value = expense.id;
+
+      // 處理日期時間
+      if (expense.date.includes(':')) {
+        // 有時間
+        const parts = expense.date.split(' ');
+        document.getElementById('editExpenseDate').value = parts[0];
+        document.getElementById('editExpenseTime').value = parts[1].substring(0, 5);
+      } else {
+        // 只有日期
+        document.getElementById('editExpenseDate').value = expense.date;
+        document.getElementById('editExpenseTime').value = '00:00';
+      }
+
       document.getElementById('editItem').value = expense.item;
       document.getElementById('editAmount').value = expense.amount;
-      document.getElementById('editCategory').value = expense.category;
+
+      // 處理分類（主分類和子分類）
+      if (expense.category.includes('>')) {
+        const parts = expense.category.split('>');
+        document.getElementById('editMainCategory').value = parts[0].trim();
+        updateEditSubCategories();
+        document.getElementById('editSubCategory').value = parts[1].trim();
+      } else {
+        document.getElementById('editMainCategory').value = expense.category;
+        updateEditSubCategories();
+      }
 
       // 判斷付款方式
       if (expense.payer === '兩人') {
@@ -2122,7 +2468,11 @@
       const amount = parseFloat(document.getElementById('editAmount').value);
       const splitType = document.getElementById('editSplitType').value;
       const payer = document.getElementById('editPayer').value;
-      const category = document.getElementById('editCategory').value;
+
+      // 組合主分類和子分類
+      const mainCategory = document.getElementById('editMainCategory').value;
+      const subCategory = document.getElementById('editSubCategory').value;
+      const category = subCategory ? (mainCategory + '>' + subCategory) : mainCategory;
 
       // 前端驗證
       if (!validateInput(item, 'text', 1, 100)) {
@@ -2158,6 +2508,10 @@
         displayPayer = '兩人';
       }
 
+      // 取得日期時間
+      const expenseDate = document.getElementById('editExpenseDate').value;
+      const expenseTime = document.getElementById('editExpenseTime').value;
+
       const updatedData = {
         id: id,
         item: item,
@@ -2165,7 +2519,8 @@
         payer: displayPayer,
         yourPart: yourPart,
         partnerPart: partnerPart,
-        category: category
+        category: category,
+        date: expenseDate + ' ' + expenseTime  // 組合日期和時間
       };
 
       google.script.run
@@ -2343,6 +2698,7 @@
         '居住': '🏠',
         '交通': '🚗',
         '娛樂': '🎮',
+        '服飾': '👔',
         '其他': '📦'
       };
 
@@ -2486,6 +2842,7 @@
         '居住': '🏠',
         '交通': '🚗',
         '娛樂': '🎮',
+        '服飾': '👔',
         '其他': '📦'
       };
 
@@ -2574,7 +2931,11 @@
     function addExpense() {
       const item = document.getElementById('item').value.trim();
       const amount = parseFloat(document.getElementById('amount').value);
-      const category = document.getElementById('category').value;
+
+      // 組合主分類和子分類
+      const mainCategory = document.getElementById('mainCategory').value;
+      const subCategory = document.getElementById('subCategory').value;
+      const category = subCategory ? (mainCategory + '>' + subCategory) : mainCategory;
 
       // 前端驗證
       if (!validateInput(item, 'text', 1, 100)) {
@@ -2734,6 +3095,10 @@
         return;
       }
 
+      // 取得日期和時間
+      const expenseDate = document.getElementById('expenseDate').value;
+      const expenseTime = document.getElementById('expenseTime').value;
+
       const expenseData = {
         item: item,
         amount: amount,
@@ -2745,7 +3110,9 @@
         partnerActualPaid: partnerActualPaidAmount,  // 對方實際付出的金額
         category: category,
         isRecurring: isRecurring,
-        recurringDay: recurringDay
+        recurringDay: recurringDay,
+        expenseDate: expenseDate,  // 支出日期
+        expenseTime: expenseTime   // 支出時間
       };
 
       // 按鈕 Loading 狀態
@@ -2760,11 +3127,31 @@
           // 清空表單
           document.getElementById('item').value = '';
           document.getElementById('amount').value = '';
-          document.getElementById('yourPart').value = '';
-          document.getElementById('partnerPart').value = '';
           document.getElementById('isRecurring').checked = false;
           document.getElementById('recurringDay').value = '';
           document.getElementById('recurringDayGroup').classList.add('hidden');
+
+          // 清空分帳欄位（如果存在）
+          const yourPartAmount = document.getElementById('yourPartAmount');
+          const partnerPartAmount = document.getElementById('partnerPartAmount');
+          const yourPartRatio = document.getElementById('yourPartRatio');
+          const partnerPartRatio = document.getElementById('partnerPartRatio');
+          const yourActualPaid = document.getElementById('yourActualPaid');
+          const partnerActualPaid = document.getElementById('partnerActualPaid');
+
+          if (yourPartAmount) yourPartAmount.value = '';
+          if (partnerPartAmount) partnerPartAmount.value = '';
+          if (yourPartRatio) yourPartRatio.value = '';
+          if (partnerPartRatio) partnerPartRatio.value = '';
+          if (yourActualPaid) yourActualPaid.value = '';
+          if (partnerActualPaid) partnerActualPaid.value = '';
+
+          // 重置日期時間為當下
+          const now = new Date();
+          const dateStr = now.toISOString().split('T')[0];
+          const timeStr = now.toTimeString().substring(0, 5);
+          document.getElementById('expenseDate').value = dateStr;
+          document.getElementById('expenseTime').value = timeStr;
 
           btn.disabled = false;
           btn.classList.remove('btn-loading');
@@ -2812,6 +3199,29 @@
         showToast('請至少勾選一個成員', 'error');
         document.getElementById('payForYou').checked = true;
         updatePaymentMethod(); // 重新觸發
+      }
+    }
+
+    // 即時更新不等額墊付的提示
+    function updateUnequalPaymentHint() {
+      const amount = parseFloat(document.getElementById('amount').value) || 0;
+      const yourPaid = parseFloat(document.getElementById('yourActualPaid').value) || 0;
+      const partnerPaid = parseFloat(document.getElementById('partnerActualPaid').value) || 0;
+      const total = yourPaid + partnerPaid;
+      const hintEl = document.getElementById('unequalPaymentHint');
+
+      if (amount === 0) {
+        hintEl.innerHTML = '💡 提示：請先填寫上方金額';
+        hintEl.style.color = '#666';
+      } else if (yourPaid === 0 && partnerPaid === 0) {
+        hintEl.innerHTML = '💡 提示：兩者總和必須等於 $' + amount;
+        hintEl.style.color = '#666';
+      } else if (Math.abs(total - amount) < 0.01) {
+        hintEl.innerHTML = '✅ 正確：總和 $' + total.toFixed(2) + ' = 金額 $' + amount;
+        hintEl.style.color = '#10b981';
+      } else {
+        hintEl.innerHTML = '❌ 錯誤：總和 $' + total.toFixed(2) + ' ≠ 金額 $' + amount + '（差 $' + Math.abs(total - amount).toFixed(2) + '）';
+        hintEl.style.color = '#ef4444';
       }
     }
 
@@ -2866,8 +3276,8 @@
     let currentChartData = null;
 
     function showCharts() {
-      // 準備數據
-      currentChartData = prepareChartData(filteredExpenses);
+      // 準備數據（使用所有記錄）
+      currentChartData = prepareChartData(allExpenses || []);
 
       // 打開 Modal
       document.getElementById('chartModal').classList.remove('hidden');
@@ -2963,7 +3373,7 @@
           '居住': '🏠',
           '交通': '🚗',
           '娛樂': '🎮',
-          '購物': '🛍️',
+          '服飾': '👔',
           '其他': '📦'
         };
 
@@ -3221,35 +3631,6 @@
         .removeMember(email);
     }
 
-    // 匯出功能
-    function exportData() {
-      let csv = '日期,項目,金額,付款人,你的部分,對方的部分,分類\n';
-
-      filteredExpenses.forEach(function(exp) {
-        csv += exp.date + ',' +
-          exp.item + ',' +
-          exp.amount + ',' +
-          exp.payer + ',' +
-          exp.yourPart + ',' +
-          exp.partnerPart + ',' +
-          exp.category + '\n';
-      });
-
-      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-
-      link.setAttribute('href', url);
-      link.setAttribute('download', '支出記錄_' + new Date().toISOString().slice(0, 10) + '.csv');
-      link.style.visibility = 'hidden';
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      showToast('匯出成功！', 'success');
-    }
-
     // 鍵盤快捷鍵和事件監聽
     document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('item').addEventListener('keypress', function(e) {
@@ -3303,9 +3684,70 @@
       });
     });
 
+    // ==================== 結算功能 ====================
+
+    function openSettlementModal() {
+      // 設定今天為預設日期
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('settlementDate').value = today;
+
+      document.getElementById('settlementModal').classList.remove('hidden');
+    }
+
+    function closeSettlementModal() {
+      document.getElementById('settlementModal').classList.add('hidden');
+
+      // 清空表單
+      document.getElementById('settlementDirection').value = 'partner_pay_me';
+      document.getElementById('settlementAmount').value = '';
+      document.getElementById('settlementDate').value = '';
+      document.getElementById('settlementNote').value = '';
+    }
+
+    function addSettlementRecord() {
+      const direction = document.getElementById('settlementDirection').value;
+      const amount = parseFloat(document.getElementById('settlementAmount').value);
+      const date = document.getElementById('settlementDate').value;
+      const note = document.getElementById('settlementNote').value.trim();
+
+      // 驗證
+      if (!amount || amount <= 0) {
+        showNotification('請輸入有效金額', 'error');
+        return;
+      }
+
+      // 顯示載入狀態
+      const button = event.target;
+      button.disabled = true;
+      button.textContent = '處理中...';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showNotification('結算記錄已新增！', 'success');
+          closeSettlementModal();
+          loadData();  // 重新載入資料
+          button.disabled = false;
+          button.textContent = '確認記錄';
+        })
+        .withFailureHandler(function(error) {
+          showNotification('新增失敗：' + error.message, 'error');
+          button.disabled = false;
+          button.textContent = '確認記錄';
+        })
+        .addSettlement(direction, amount, date, note);
+    }
+
+    // Modal 點擊外部關閉 - 結算
+    document.getElementById('settlementModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeSettlementModal();
+      }
+    });
+
     window.onload = function() {
       loadData();
       loadUserInfo();
+      loadQuickExpenseButtons();
     };
   </script>
 </body>
