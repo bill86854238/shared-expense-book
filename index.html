@@ -2090,6 +2090,9 @@
       // 載入所有資料（用於儀表板和統計）
       google.script.run
         .withSuccessHandler(function(expenses) {
+          console.log('=== getAllExpenses 回傳資料 ===');
+          console.log('筆數:', expenses.length);
+          console.log('資料:', expenses);
           allExpenses = expenses;
           allExpensesLoaded = true;
           updateDashboard(allExpenses);
@@ -2097,7 +2100,7 @@
           updateUI(displayedExpenses);
         })
         .withFailureHandler(showError)
-        .getAllExpenses();
+        .getAllExpenses(appSettings.mode);
     }
 
     /**
@@ -2110,6 +2113,11 @@
       google.script.run
         .withSuccessHandler(function(result) {
           isLoading = false;
+
+          console.log('=== getExpenses 回傳資料 ===');
+          console.log('筆數:', result.expenses.length);
+          console.log('總數:', result.total);
+          console.log('資料:', result.expenses);
 
           if (offset === 0) {
             // 第一頁：清空並顯示
@@ -2127,9 +2135,10 @@
         })
         .withFailureHandler(function(error) {
           isLoading = false;
+          console.error('載入資料失敗:', error);
           showError(error);
         })
-        .getExpenses({ offset: offset, limit: PAGE_SIZE });
+        .getExpenses({ offset: offset, limit: PAGE_SIZE, accountingMode: appSettings.mode });
     }
 
     // 載入使用者資訊

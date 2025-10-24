@@ -63,7 +63,7 @@ function createExpensesSheet(ss) {
     // 只有不存在時才建立新的
     sheet = ss.insertSheet(CONFIG.SHEET_NAMES.EXPENSES);
 
-    const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '你實付', '對方實付', '分類', '是否週期', '週期日期', 'ID', '記錄類型'];
+    const headers = ['日期', '項目', '金額(TWD)', '原始金額', '幣別', '匯率', '付款人', '實際付款人', '你的部分', '對方的部分', '你實付', '對方實付', '分類', '付款帳戶', '專案', '是否週期', '週期日期', 'ID', '記錄類型', '記錄擁有者'];
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
     sheet.getRange(1, 1, 1, headers.length)
@@ -72,7 +72,7 @@ function createExpensesSheet(ss) {
       .setFontWeight('bold')
       .setHorizontalAlignment('center');
 
-    const widths = [100, 150, 100, 100, 100, 100, 100, 100, 100, 80, 80, 80, 120, 100];
+    const widths = [100, 150, 100, 90, 60, 70, 100, 100, 100, 100, 100, 100, 80, 100, 100, 80, 80, 120, 100, 150];
     widths.forEach((width, i) => sheet.setColumnWidth(i + 1, width));
 
     sheet.setFrozenRows(1);
@@ -178,6 +178,54 @@ function createSettingsSheet(ss) {
     // 加入說明
     sheet.getRange('A18').setValue('💡 提示：可以自由新增、修改或刪除快速記帳按鈕（最多 12 個）');
     sheet.getRange('A18').setFontSize(9).setFontColor('#999999');
+
+    // 匯率參考表
+    sheet.getRange(20, 1).setValue('匯率參考表');
+    sheet.getRange(20, 1).setFontWeight('bold').setFontSize(11);
+
+    const exchangeRateHeaders = ['幣別代碼', '幣別名稱', '匯率(對TWD)', '更新日期'];
+
+    // 使用 GOOGLEFINANCE 公式自動更新匯率
+    const currencyPairs = [
+      ['JPY', '日幣', 'CURRENCY:JPYTWD'],
+      ['USD', '美金', 'CURRENCY:USDTWD'],
+      ['EUR', '歐元', 'CURRENCY:EURTWD'],
+      ['HKD', '港幣', 'CURRENCY:HKDTWD'],
+      ['CNY', '人民幣', 'CURRENCY:CNYTWD'],
+      ['KRW', '韓元', 'CURRENCY:KRWTWD'],
+      ['SGD', '新加坡幣', 'CURRENCY:SGDTWD'],
+      ['GBP', '英鎊', 'CURRENCY:GBPTWD'],
+      ['AUD', '澳幣', 'CURRENCY:AUDTWD'],
+      ['THB', '泰銖', 'CURRENCY:THBTWD']
+    ];
+
+    sheet.getRange(21, 1, 1, 4).setValues([exchangeRateHeaders]);
+    sheet.getRange(21, 1, 1, 4)
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+
+    // 填入幣別代碼和名稱，匯率使用公式
+    for (let i = 0; i < currencyPairs.length; i++) {
+      const row = 22 + i;
+      sheet.getRange(row, 1).setValue(currencyPairs[i][0]); // 幣別代碼
+      sheet.getRange(row, 2).setValue(currencyPairs[i][1]); // 幣別名稱
+      sheet.getRange(row, 3).setFormula(`=IFERROR(GOOGLEFINANCE("${currencyPairs[i][2]}"), "N/A")`); // 匯率公式
+      sheet.getRange(row, 4).setFormula('=IF(ISNUMBER(C' + row + '), TEXT(NOW(), "yyyy/MM/dd HH:mm"), "")'); // 更新時間
+    }
+
+    sheet.getRange(22, 1, currencyPairs.length, 4).setHorizontalAlignment('center');
+
+    // 設定匯率表欄位寬度
+    sheet.setColumnWidth(1, 100);  // 幣別代碼
+    sheet.setColumnWidth(2, 120);  // 幣別名稱
+    sheet.setColumnWidth(3, 120);  // 匯率
+    sheet.setColumnWidth(4, 140);  // 更新日期（加寬以容納時間）
+
+    // 加入說明
+    sheet.getRange('A32').setValue('💡 提示：匯率使用 GOOGLEFINANCE 公式自動更新。若公式失效，可手動輸入數值。');
+    sheet.getRange('A32').setFontSize(9).setFontColor('#999999');
   }
   // 如果已存在，不做任何事（保護資料）
 }
@@ -329,7 +377,7 @@ function getCategoriesFromSettings() {
   }
 }
 
-function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid, expenseDate, expenseTime) {
+function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid, expenseDate, expenseTime, currency, originalAmount) {
   // 檢查頻率限制
   checkRateLimit('addExpense');
 
@@ -398,10 +446,51 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
     }
   }
 
+  // 處理多幣別
+  const finalCurrency = currency || 'TWD';
+  let finalOriginalAmount = originalAmount || amount;
+  let exchangeRate = 1;
+  let twdAmount = amount;
+
+  if (finalCurrency !== 'TWD' && originalAmount) {
+    // 有提供原始金額和外幣,計算匯率
+    exchangeRate = amount / originalAmount;
+    twdAmount = amount;
+    finalOriginalAmount = originalAmount;
+  } else if (finalCurrency !== 'TWD' && !originalAmount) {
+    // 只有幣別沒有原始金額,反推原始金額
+    exchangeRate = getExchangeRate(finalCurrency);
+    finalOriginalAmount = Math.round(amount / exchangeRate);
+    twdAmount = amount;
+  } else {
+    // TWD 情況
+    exchangeRate = 1;
+    twdAmount = amount;
+    finalOriginalAmount = amount;
+  }
+
+  // 取得記帳模式和當前使用者
+  const appSettings = getAppSettings();
+  const accountingMode = appSettings.mode || '共同記帳';
+  const currentUser = Session.getActiveUser().getEmail();
+
+  // 確定記錄類型（recordType 決定顯示範圍）
+  let recordType = 'expense';  // 預設為共同支出
+
+  if (accountingMode === '個人記帳') {
+    recordType = 'personal';  // 個人記帳
+  }
+
+  // recordOwner 永遠記錄新增者，不論個人或共同模式
+  const recordOwner = currentUser;
+
   const row = [
     Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
     safeItem,
-    amount,
+    twdAmount,  // 金額(TWD)
+    finalOriginalAmount,  // 原始金額
+    finalCurrency,  // 幣別
+    exchangeRate,  // 匯率
     payer,
     actualPayer || payer,  // 實際付款人，向下相容
     yourPart,
@@ -409,22 +498,25 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
     finalYourActualPaid,  // 你實際付出的金額
     finalPartnerActualPaid,  // 對方實際付出的金額
     safeCategory,
+    '',  // 付款帳戶（共同記帳不使用）
+    '',  // 專案（共同記帳不使用）
     isRecurring || false,
     recurringDay || '',
     id,
-    'expense'  // 記錄類型：支出
+    recordType,  // 記錄類型：根據記帳模式決定
+    recordOwner  // 記錄擁有者：個人記帳時記錄使用者 email
   ];
 
   sheet.appendRow(row);
 
   const lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow, 1, 1, 14).setHorizontalAlignment('center');
+  sheet.getRange(lastRow, 1, 1, 20).setHorizontalAlignment('center');
 
   let color = CONFIG.COLORS.BOTH;
   if (payer === '你') color = CONFIG.COLORS.YOUR;
   else if (payer === '對方') color = CONFIG.COLORS.PARTNER;
 
-  sheet.getRange(lastRow, 1, 1, 13).setBackground(color);
+  sheet.getRange(lastRow, 1, 1, 20).setBackground(color);
 
   // 記錄日誌
   logAction('新增支出', `項目: ${safeItem}, 金額: ${amount}, 付款人: ${payer}`);
@@ -748,15 +840,36 @@ function getExpenses(filters) {
     return { expenses: [], total: 0, hasMore: false };
   }
 
+  // 取得記帳模式：優先使用前端傳來的模式，否則從設定讀取
+  const accountingMode = (filters && filters.accountingMode) ? filters.accountingMode : getAppSettings().mode || '共同記帳';
+
   // 解析分頁參數
   const offset = (filters && filters.offset) ? Number(filters.offset) : 0;
   const limit = (filters && filters.limit) ? Number(filters.limit) : 50;
 
   const allExpenses = [];
+
+  // Debug: 記錄總行數和當前使用者
+  Logger.log(`=== getExpenses 開始 ===`);
+  Logger.log(`總行數: ${data.length - 1}`);
+  Logger.log(`記帳模式: ${accountingMode}`);
+
+  // 取得當前使用者（標準化處理）
+  const currentUser = Session.getActiveUser().getEmail().trim().toLowerCase();
+  Logger.log(`當前使用者: ${currentUser}`);
+
   for (let i = 1; i < data.length; i++) {
     // 跳過空白列
     if (!data[i][1]) {
       continue;
+    }
+
+    // Debug: 記錄原始資料
+    if (i <= 3) {  // 只記錄前 3 筆
+      Logger.log(`--- 第 ${i} 筆原始資料 ---`);
+      Logger.log(`項目: ${data[i][1]}`);
+      Logger.log(`recordType (原始): "${data[i][18]}"`);
+      Logger.log(`recordOwner (原始): "${data[i][19]}"`);
     }
 
     // 格式化日期（處理 Date 物件或字串）
@@ -770,20 +883,56 @@ function getExpenses(filters) {
       dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
     }
 
+    const recordType = String(data[i][18] || 'expense').trim();  // 記錄類型，向下相容
+    const recordOwner = String(data[i][19] || '').trim().toLowerCase();  // 記錄擁有者，標準化處理
+
+    // Debug: 記錄處理後的值
+    if (i <= 3) {
+      Logger.log(`recordType (處理後): "${recordType}"`);
+      Logger.log(`recordOwner (處理後): "${recordOwner}"`);
+    }
+
+    // 根據記帳模式過濾記錄（只用 recordType 判斷）
+    if (accountingMode === '個人記帳') {
+      // 個人記帳模式：只顯示當前使用者的個人記帳記錄
+      if (recordType !== 'personal') {
+        Logger.log(`跳過記錄（recordType=${recordType}）：${data[i][1]}`);
+        continue;
+      }
+      // 必須是當前使用者的記錄
+      if (recordOwner !== currentUser) {
+        Logger.log(`跳過記錄（recordOwner=${recordOwner}, currentUser=${currentUser}）：${data[i][1]}`);
+        continue;
+      }
+    } else {
+      // 共同記帳模式：只顯示共同支出和結算記錄（不管是誰新增的）
+      if (recordType !== 'expense' && recordType !== 'settlement') {
+        Logger.log(`跳過記錄（共同模式，recordType=${recordType}）：${data[i][1]}`);
+        continue;
+      }
+    }
+
     allExpenses.push({
       date: dateStr,
       item: String(data[i][1] || ''),
       amount: Number(data[i][2]) || 0,
-      payer: String(data[i][3] || ''),
-      actualPayer: String(data[i][4] || data[i][3] || ''),  // 實際付款人，向下相容
-      yourPart: Number(data[i][5]) || 0,
-      partnerPart: Number(data[i][6]) || 0,
-      yourActualPaid: Number(data[i][7]) >= 0 ? Number(data[i][7]) : null,  // 你實際付出的金額，向下相容
-      partnerActualPaid: Number(data[i][8]) >= 0 ? Number(data[i][8]) : null,  // 對方實際付出的金額，向下相容
-      category: String(data[i][9] || '其他'),
-      isRecurring: Boolean(data[i][10]),
-      recurringDay: data[i][11] || '',
-      id: String(data[i][12] || '')
+      originalAmount: Number(data[i][3]) || Number(data[i][2]) || 0,  // 原始金額，向下相容
+      currency: String(data[i][4] || 'TWD'),  // 幣別，向下相容
+      exchangeRate: Number(data[i][5]) || 1,  // 匯率，向下相容
+      payer: String(data[i][6] || ''),
+      actualPayer: String(data[i][7] || data[i][6] || ''),  // 實際付款人，向下相容
+      yourPart: Number(data[i][8]) || 0,
+      partnerPart: Number(data[i][9]) || 0,
+      yourActualPaid: Number(data[i][10]) >= 0 ? Number(data[i][10]) : null,  // 你實際付出的金額，向下相容
+      partnerActualPaid: Number(data[i][11]) >= 0 ? Number(data[i][11]) : null,  // 對方實際付出的金額，向下相容
+      category: String(data[i][12] || '其他'),
+      paymentAccount: String(data[i][13] || ''),  // 付款帳戶
+      project: String(data[i][14] || ''),  // 專案
+      isRecurring: Boolean(data[i][15]),
+      recurringDay: data[i][16] || '',
+      id: String(data[i][17] || ''),
+      recordType: recordType,
+      recordOwner: recordOwner  // 記錄擁有者
     });
   }
 
@@ -807,8 +956,9 @@ function getExpenses(filters) {
 
 /**
  * 取得所有支出記錄（不分頁，用於儀表板和統計）
+ * @param {string} accountingMode - 記帳模式（選填，由前端傳遞）
  */
-function getAllExpenses() {
+function getAllExpenses(accountingMode) {
   // 權限驗證
   const permission = checkUserPermission();
   if (!permission.allowed) {
@@ -831,6 +981,12 @@ function getAllExpenses() {
     return [];
   }
 
+  // 取得記帳模式：優先使用前端傳來的模式，否則從設定讀取
+  if (!accountingMode) {
+    const appSettings = getAppSettings();
+    accountingMode = appSettings.mode || '共同記帳';
+  }
+
   const expenses = [];
   for (let i = 1; i < data.length; i++) {
     // 跳過空白列
@@ -849,20 +1005,53 @@ function getAllExpenses() {
       dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
     }
 
+    const recordType = String(data[i][18] || 'expense').trim();  // 記錄類型，向下相容
+    const recordOwner = String(data[i][19] || '').trim().toLowerCase();  // 記錄擁有者，標準化處理
+
+    // 取得當前使用者（標準化處理）
+    const currentUser = Session.getActiveUser().getEmail().trim().toLowerCase();
+
+    // 根據記帳模式過濾記錄（只用 recordType 判斷）
+    if (accountingMode === '個人記帳') {
+      // 個人記帳模式：只顯示當前使用者的個人記帳記錄
+      if (recordType !== 'personal') {
+        Logger.log(`跳過記錄（recordType=${recordType}）：${data[i][1]}`);
+        continue;
+      }
+      // 必須是當前使用者的記錄
+      if (recordOwner !== currentUser) {
+        Logger.log(`跳過記錄（recordOwner=${recordOwner}, currentUser=${currentUser}）：${data[i][1]}`);
+        continue;
+      }
+    } else {
+      // 共同記帳模式：只顯示共同支出和結算記錄（不管是誰新增的）
+      if (recordType !== 'expense' && recordType !== 'settlement') {
+        Logger.log(`跳過記錄（共同模式，recordType=${recordType}）：${data[i][1]}`);
+        continue;
+      }
+    }
+
     expenses.push({
       date: dateStr,
       item: String(data[i][1] || ''),
       amount: Number(data[i][2]) || 0,
-      payer: String(data[i][3] || ''),
-      actualPayer: String(data[i][4] || data[i][3] || ''),  // 實際付款人，向下相容
-      yourPart: Number(data[i][5]) || 0,
-      partnerPart: Number(data[i][6]) || 0,
-      yourActualPaid: Number(data[i][7]) >= 0 ? Number(data[i][7]) : null,  // 你實際付出的金額，向下相容
-      partnerActualPaid: Number(data[i][8]) >= 0 ? Number(data[i][8]) : null,  // 對方實際付出的金額，向下相容
-      category: String(data[i][9] || '其他'),
-      isRecurring: Boolean(data[i][10]),
-      recurringDay: data[i][11] || '',
-      id: String(data[i][12] || '')
+      originalAmount: Number(data[i][3]) || Number(data[i][2]) || 0,  // 原始金額，向下相容
+      currency: String(data[i][4] || 'TWD'),  // 幣別，向下相容
+      exchangeRate: Number(data[i][5]) || 1,  // 匯率，向下相容
+      payer: String(data[i][6] || ''),
+      actualPayer: String(data[i][7] || data[i][6] || ''),  // 實際付款人，向下相容
+      yourPart: Number(data[i][8]) || 0,
+      partnerPart: Number(data[i][9]) || 0,
+      yourActualPaid: Number(data[i][10]) >= 0 ? Number(data[i][10]) : null,  // 你實際付出的金額，向下相容
+      partnerActualPaid: Number(data[i][11]) >= 0 ? Number(data[i][11]) : null,  // 對方實際付出的金額，向下相容
+      category: String(data[i][12] || '其他'),
+      paymentAccount: String(data[i][13] || ''),  // 付款帳戶
+      project: String(data[i][14] || ''),  // 專案
+      isRecurring: Boolean(data[i][15]),
+      recurringDay: data[i][16] || '',
+      id: String(data[i][17] || ''),
+      recordType: recordType,
+      recordOwner: recordOwner  // 記錄擁有者
     });
   }
 
@@ -884,7 +1073,9 @@ function addExpenseFromWeb(expenseData) {
     expenseData.yourActualPaid || null,  // 你實際付出的金額
     expenseData.partnerActualPaid || null,  // 對方實際付出的金額
     expenseData.expenseDate || null,  // 支出日期
-    expenseData.expenseTime || null   // 支出時間
+    expenseData.expenseTime || null,  // 支出時間
+    expenseData.currency || null,  // 幣別
+    expenseData.originalAmount || null  // 原始金額
   );
 }
 
@@ -940,9 +1131,9 @@ function updateExpenseById(updatedData) {
     throw new Error('分帳金額總和必須等於總金額');
   }
 
-  // 找到 ID 欄位（第 13 欄）並更新
+  // 找到 ID 欄位（第 18 欄）並更新
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][12]) === String(updatedData.id)) {
+    if (String(data[i][17]) === String(updatedData.id)) {
       const oldItem = data[i][1];
       const oldAmount = data[i][2];
 
@@ -950,21 +1141,23 @@ function updateExpenseById(updatedData) {
       const safeItem = escapeHtml(updatedData.item.trim());
       const safeCategory = escapeHtml(updatedData.category);
 
-      // 更新資料（保留原有的日期和 ID）
+      // 更新資料（保留原有的日期、多幣別欄位和 ID）
       sheet.getRange(i + 1, 2).setValue(safeItem);           // 項目
-      sheet.getRange(i + 1, 3).setValue(updatedData.amount); // 金額
-      sheet.getRange(i + 1, 4).setValue(updatedData.payer);  // 付款人
-      // 第 5 欄是「實際付款人」，編輯功能暫不更新
-      sheet.getRange(i + 1, 6).setValue(updatedData.yourPart);     // 你的部分
-      sheet.getRange(i + 1, 7).setValue(updatedData.partnerPart);  // 對方的部分
-      // 第 8, 9 欄是「你實付」、「對方實付」，編輯功能暫不更新
-      sheet.getRange(i + 1, 10).setValue(safeCategory);       // 分類
+      sheet.getRange(i + 1, 3).setValue(updatedData.amount); // 金額(TWD)
+      // 第 4-6 欄是「原始金額」、「幣別」、「匯率」，編輯功能暫不更新
+      sheet.getRange(i + 1, 7).setValue(updatedData.payer);  // 付款人
+      // 第 8 欄是「實際付款人」，編輯功能暫不更新
+      sheet.getRange(i + 1, 9).setValue(updatedData.yourPart);     // 你的部分
+      sheet.getRange(i + 1, 10).setValue(updatedData.partnerPart);  // 對方的部分
+      // 第 11, 12 欄是「你實付」、「對方實付」，編輯功能暫不更新
+      sheet.getRange(i + 1, 13).setValue(safeCategory);       // 分類
+      // 第 14, 15 欄是「付款帳戶」、「專案」，編輯功能暫不更新
 
-      // 更新背景顏色
+      // 更新背景顏色（擴展到 19 欄）
       let color = CONFIG.COLORS.BOTH;
       if (updatedData.payer === '你') color = CONFIG.COLORS.YOUR;
       else if (updatedData.payer === '對方') color = CONFIG.COLORS.PARTNER;
-      sheet.getRange(i + 1, 1, 1, 13).setBackground(color);
+      sheet.getRange(i + 1, 1, 1, 19).setBackground(color);
 
       // 記錄日誌
       logAction('更新支出', `ID: ${updatedData.id}, 原: ${oldItem}($${oldAmount}) → 新: ${safeItem}($${updatedData.amount})`);
@@ -1518,7 +1711,9 @@ function upgradeToLatest() {
     '即將檢查並執行所有可用的升級項目：\n\n' +
     '• v2.4 - 墊付功能（實際付款人欄位）\n' +
     '• v2.5 - 快速記帳按鈕設定\n' +
-    '• v2.8 - 結算功能（記錄類型欄位）\n\n' +
+    '• v2.8 - 結算功能（記錄類型欄位）\n' +
+    '• v2.9 - 付款帳戶功能（付款帳戶欄位）\n' +
+    '• v3.0 - 多幣別與專案功能（原始金額、幣別、匯率、專案欄位）\n\n' +
     '已完成的升級會自動跳過，不會重複執行。\n\n' +
     '確定要開始升級嗎？',
     ui.ButtonSet.YES_NO
@@ -1648,6 +1843,221 @@ function upgradeToLatest() {
     upgrades.push('- v2.8 結算功能（已安裝）');
   }
 
+  // === 檢查 v2.9：付款帳戶功能（付款帳戶欄位） ===
+  const paymentAccountIndex = headers.indexOf('付款帳戶');
+
+  if (paymentAccountIndex === -1) {
+    // 需要升級 v2.9
+    try {
+      // 在「分類」後面（第11欄）插入「付款帳戶」欄位
+      const categoryIndex = headers.indexOf('分類');
+      if (categoryIndex === -1) {
+        throw new Error('找不到「分類」欄位');
+      }
+
+      expensesSheet.insertColumnAfter(categoryIndex + 1);
+      expensesSheet.getRange(1, categoryIndex + 2).setValue('付款帳戶');
+      expensesSheet.getRange(1, categoryIndex + 2)
+        .setBackground(CONFIG.COLORS.HEADER)
+        .setFontColor('#ffffff')
+        .setFontWeight('bold')
+        .setHorizontalAlignment('center');
+      expensesSheet.setColumnWidth(categoryIndex + 2, 100);
+
+      // 自動填入現有資料為空字串
+      const lastRow = expensesSheet.getLastRow();
+      if (lastRow > 1) {
+        const emptyValues = [];
+        for (let i = 0; i < lastRow - 1; i++) {
+          emptyValues.push(['']);
+        }
+        expensesSheet.getRange(2, categoryIndex + 2, lastRow - 1, 1).setValues(emptyValues);
+      }
+
+      upgrades.push('✓ v2.9 付款帳戶功能');
+      hasUpgrade = true;
+    } catch (e) {
+      upgrades.push('✗ v2.9 付款帳戶功能失敗：' + e.toString());
+    }
+  } else {
+    upgrades.push('- v2.9 付款帳戶功能（已安裝）');
+  }
+
+  // === 檢查 v3.0：多幣別與專案功能 ===
+  // 重新讀取 headers 以確保包含所有已升級的欄位
+  const currentHeaders = expensesSheet.getRange(1, 1, 1, expensesSheet.getLastColumn()).getValues()[0];
+  const originalAmountIndex = currentHeaders.indexOf('原始金額');
+  const currencyIndex = currentHeaders.indexOf('幣別');
+  const exchangeRateIndex = currentHeaders.indexOf('匯率');
+  const projectIndex = currentHeaders.indexOf('專案');
+
+  let needsV30Upgrade = false;
+
+  if (originalAmountIndex === -1 || currencyIndex === -1 || exchangeRateIndex === -1) {
+    needsV30Upgrade = true;
+  }
+
+  if (needsV30Upgrade) {
+    try {
+      // 在「金額(TWD)」後面插入三個多幣別欄位
+      const amountIndex = currentHeaders.indexOf('金額(TWD)');
+      if (amountIndex === -1) {
+        throw new Error('找不到「金額(TWD)」欄位');
+      }
+
+      // 插入三個欄位：原始金額、幣別、匯率
+      expensesSheet.insertColumnsAfter(amountIndex + 1, 3);
+
+      // 設定標題
+      expensesSheet.getRange(1, amountIndex + 2).setValue('原始金額');
+      expensesSheet.getRange(1, amountIndex + 3).setValue('幣別');
+      expensesSheet.getRange(1, amountIndex + 4).setValue('匯率');
+
+      // 設定標題樣式
+      for (let i = 2; i <= 4; i++) {
+        expensesSheet.getRange(1, amountIndex + i)
+          .setBackground(CONFIG.COLORS.HEADER)
+          .setFontColor('#ffffff')
+          .setFontWeight('bold')
+          .setHorizontalAlignment('center');
+      }
+
+      // 設定欄位寬度
+      expensesSheet.setColumnWidth(amountIndex + 2, 100); // 原始金額
+      expensesSheet.setColumnWidth(amountIndex + 3, 80);  // 幣別
+      expensesSheet.setColumnWidth(amountIndex + 4, 80);  // 匯率
+
+      // 填入現有資料的預設值
+      const lastRow = expensesSheet.getLastRow();
+      if (lastRow > 1) {
+        // 讀取現有的 TWD 金額
+        const twdAmounts = expensesSheet.getRange(2, amountIndex + 1, lastRow - 1, 1).getValues();
+
+        // 準備要填入的資料
+        const defaultData = [];
+        for (let i = 0; i < twdAmounts.length; i++) {
+          defaultData.push([
+            twdAmounts[i][0], // 原始金額 = TWD 金額
+            'TWD',            // 幣別 = TWD
+            1                 // 匯率 = 1
+          ]);
+        }
+
+        expensesSheet.getRange(2, amountIndex + 2, lastRow - 1, 3).setValues(defaultData);
+      }
+
+      upgrades.push('✓ v3.0 多幣別功能（原始金額、幣別、匯率）');
+      hasUpgrade = true;
+    } catch (e) {
+      upgrades.push('✗ v3.0 多幣別功能失敗：' + e.toString());
+    }
+  } else {
+    upgrades.push('- v3.0 多幣別功能（已安裝）');
+  }
+
+  // 檢查專案欄位（需要在多幣別之後檢查，因為欄位位置可能改變）
+  const updatedHeaders = expensesSheet.getRange(1, 1, 1, expensesSheet.getLastColumn()).getValues()[0];
+  const updatedProjectIndex = updatedHeaders.indexOf('專案');
+
+  if (updatedProjectIndex === -1) {
+    try {
+      // 在「付款帳戶」後面插入「專案」欄位
+      const updatedPaymentAccountIndex = updatedHeaders.indexOf('付款帳戶');
+      if (updatedPaymentAccountIndex === -1) {
+        throw new Error('找不到「付款帳戶」欄位');
+      }
+
+      expensesSheet.insertColumnAfter(updatedPaymentAccountIndex + 1);
+      expensesSheet.getRange(1, updatedPaymentAccountIndex + 2).setValue('專案');
+      expensesSheet.getRange(1, updatedPaymentAccountIndex + 2)
+        .setBackground(CONFIG.COLORS.HEADER)
+        .setFontColor('#ffffff')
+        .setFontWeight('bold')
+        .setHorizontalAlignment('center');
+      expensesSheet.setColumnWidth(updatedPaymentAccountIndex + 2, 120);
+
+      // 填入空字串
+      const lastRow = expensesSheet.getLastRow();
+      if (lastRow > 1) {
+        const emptyValues = [];
+        for (let i = 0; i < lastRow - 1; i++) {
+          emptyValues.push(['']);
+        }
+        expensesSheet.getRange(2, updatedPaymentAccountIndex + 2, lastRow - 1, 1).setValues(emptyValues);
+      }
+
+      upgrades.push('✓ v3.0 專案功能');
+      hasUpgrade = true;
+    } catch (e) {
+      upgrades.push('✗ v3.0 專案功能失敗：' + e.toString());
+    }
+  } else {
+    upgrades.push('- v3.0 專案功能（已安裝）');
+  }
+
+  // 檢查並新增匯率參考表（在設定工作表）
+  if (settingsSheet) {
+    const rateTableTitle = settingsSheet.getRange(20, 1).getValue();
+    if (rateTableTitle !== '匯率參考表') {
+      try {
+        // 新增匯率參考表
+        settingsSheet.getRange(20, 1).setValue('匯率參考表');
+        settingsSheet.getRange(20, 1).setFontWeight('bold').setFontSize(11);
+
+        const exchangeRateHeaders = ['幣別代碼', '幣別名稱', '匯率(對TWD)', '更新日期'];
+
+        // 使用 GOOGLEFINANCE 公式自動更新匯率
+        const currencyPairs = [
+          ['JPY', '日幣', 'CURRENCY:JPYTWD'],
+          ['USD', '美金', 'CURRENCY:USDTWD'],
+          ['EUR', '歐元', 'CURRENCY:EURTWD'],
+          ['HKD', '港幣', 'CURRENCY:HKDTWD'],
+          ['CNY', '人民幣', 'CURRENCY:CNYTWD'],
+          ['KRW', '韓元', 'CURRENCY:KRWTWD'],
+          ['SGD', '新加坡幣', 'CURRENCY:SGDTWD'],
+          ['GBP', '英鎊', 'CURRENCY:GBPTWD'],
+          ['AUD', '澳幣', 'CURRENCY:AUDTWD'],
+          ['THB', '泰銖', 'CURRENCY:THBTWD']
+        ];
+
+        settingsSheet.getRange(21, 1, 1, 4).setValues([exchangeRateHeaders]);
+        settingsSheet.getRange(21, 1, 1, 4)
+          .setBackground(CONFIG.COLORS.HEADER)
+          .setFontColor('#ffffff')
+          .setFontWeight('bold')
+          .setHorizontalAlignment('center');
+
+        // 填入幣別代碼和名稱，匯率使用公式
+        for (let i = 0; i < currencyPairs.length; i++) {
+          const row = 22 + i;
+          settingsSheet.getRange(row, 1).setValue(currencyPairs[i][0]); // 幣別代碼
+          settingsSheet.getRange(row, 2).setValue(currencyPairs[i][1]); // 幣別名稱
+          settingsSheet.getRange(row, 3).setFormula(`=IFERROR(GOOGLEFINANCE("${currencyPairs[i][2]}"), "N/A")`); // 匯率公式
+          settingsSheet.getRange(row, 4).setFormula('=IF(ISNUMBER(C' + row + '), TEXT(NOW(), "yyyy/MM/dd HH:mm"), "")'); // 更新時間
+        }
+
+        settingsSheet.getRange(22, 1, currencyPairs.length, 4).setHorizontalAlignment('center');
+
+        // 設定欄位寬度
+        settingsSheet.setColumnWidth(1, 100); // 幣別代碼
+        settingsSheet.setColumnWidth(2, 120); // 幣別名稱
+        settingsSheet.setColumnWidth(3, 120); // 匯率
+        settingsSheet.setColumnWidth(4, 140); // 更新日期（加寬以容納時間）
+
+        // 加入說明
+        settingsSheet.getRange(32, 1).setValue('💡 提示：匯率使用 GOOGLEFINANCE 公式自動更新。若公式失效，可手動輸入數值。');
+        settingsSheet.getRange(32, 1).setFontSize(9).setFontColor('#999999');
+
+        upgrades.push('✓ v3.0 匯率參考表');
+        hasUpgrade = true;
+      } catch (e) {
+        upgrades.push('✗ v3.0 匯率參考表失敗：' + e.toString());
+      }
+    } else {
+      upgrades.push('- v3.0 匯率參考表（已安裝）');
+    }
+  }
+
   // 顯示結果
   const message = upgrades.join('\n');
   if (hasUpgrade) {
@@ -1703,9 +2113,9 @@ function resetSystem() {
     return;
   }
 
-  // 執行重置
+  // 執行重置（使用最新的完整欄位定義）
   expensesSheet.clear();
-  const headers = ['日期', '項目', '金額', '付款人', '實際付款人', '你的部分', '對方的部分', '你實付', '對方實付', '分類', '是否週期', '週期日期', 'ID', '記錄類型'];
+  const headers = ['日期', '項目', '金額(TWD)', '原始金額', '幣別', '匯率', '付款人', '實際付款人', '你的部分', '對方的部分', '你實付', '對方實付', '分類', '付款帳戶', '專案', '是否週期', '週期日期', 'ID', '記錄類型', '記錄擁有者'];
   expensesSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   expensesSheet.getRange(1, 1, 1, headers.length)
     .setBackground(CONFIG.COLORS.HEADER)
@@ -1713,7 +2123,7 @@ function resetSystem() {
     .setFontWeight('bold')
     .setHorizontalAlignment('center');
 
-  const widths = [100, 150, 100, 100, 100, 100, 100, 100, 100, 80, 80, 80, 120, 100];
+  const widths = [100, 150, 100, 90, 60, 70, 100, 100, 100, 100, 100, 100, 80, 100, 100, 80, 80, 120, 100, 150];
   widths.forEach((width, i) => expensesSheet.setColumnWidth(i + 1, width));
 
   expensesSheet.setFrozenRows(1);
@@ -1803,7 +2213,7 @@ function resetSystem() {
   }
   createCategoriesSheet(ss);
 
-  ui.alert('✅ 重置完成！\n\n所有資料已清空，系統已重新初始化。');
+  ui.alert('✅ 重置完成！\n\n所有資料已清空，系統已重新初始化。\n\n💡 已自動套用最新欄位格式（包含多幣別、專案、付款帳戶等功能），無需再執行升級。');
 }
 
 // ==================== 選單 ====================
@@ -1815,7 +2225,10 @@ function onOpen() {
     .addItem('📱 開啟網頁版', 'openWebApp')
     .addSeparator()
     .addItem('🔄 升級到最新版本', 'upgradeToLatest')
-    .addItem('📥 匯入 SettleUp CSV', 'importSettleUpCSV')
+    .addSeparator()
+    .addSubMenu(ui.createMenu('📥 匯入資料')
+      .addItem('💑 SettleUp (拆帳軟體)', 'importSettleUpCSV')
+      .addItem('💰 AndroMoney (記帳軟體)', 'importAndroMoneyCSV'))
     .addSeparator()
     .addItem('🔄 手動執行週期事件', 'manualExecuteRecurring')
     .addItem('📈 查看統計資料', 'showStatistics')
@@ -2069,11 +2482,17 @@ function processImportWithName(myName) {
       return;
     }
 
+    // 取得當前使用者
+    const currentUser = Session.getActiveUser().getEmail();
+
     // 寫入試算表
     const dataToWrite = expenses.map(exp => [
       exp.date,
       exp.item,
-      exp.amount,
+      exp.amount,  // 金額(TWD)
+      exp.originalAmount,  // 原始金額
+      exp.currency,  // 幣別
+      exp.exchangeRate,  // 匯率
       exp.payer,
       exp.actualPayer,
       exp.yourPart,
@@ -2081,14 +2500,17 @@ function processImportWithName(myName) {
       exp.yourActualPaid || 0,  // 你實付
       exp.partnerActualPaid || 0,  // 對方實付
       exp.category,
+      exp.paymentAccount || '',  // 付款帳戶
+      exp.project || '',  // 專案
       false, // isRecurring
       '', // recurringDay
       new Date().getTime() + Math.random(), // ID
-      exp.recordType || 'expense' // 記錄類型
+      exp.recordType || 'expense', // 記錄類型
+      currentUser  // recordOwner：共同記帳匯入時，記錄執行匯入的使用者
     ]);
 
     const lastRow = expensesSheet.getLastRow();
-    expensesSheet.getRange(lastRow + 1, 1, dataToWrite.length, 14).setValues(dataToWrite);
+    expensesSheet.getRange(lastRow + 1, 1, dataToWrite.length, 20).setValues(dataToWrite);
 
     // 顯示結果
     let message = `✅ 匯入完成！\n\n` +
@@ -2220,6 +2642,9 @@ function parseSettleUpSheetRow(row, rowNum, myName) {
     date: date,
     item: purpose,
     amount: amount,
+    originalAmount: amount,  // SettleUp 已是 TWD，原始金額 = TWD 金額
+    currency: 'TWD',  // SettleUp 預設為 TWD
+    exchangeRate: 1,  // TWD 匯率固定為 1
     category: category,
     payer: payer,
     splitType: splitInfo.splitType,
@@ -2230,6 +2655,9 @@ function parseSettleUpSheetRow(row, rowNum, myName) {
     actualPayer: payer,
     yourActualPaid: splitInfo.yourActualPaid || 0,
     partnerActualPaid: splitInfo.partnerActualPaid || 0,
+    paymentAccount: '',  // SettleUp 無付款帳戶資訊
+    project: '',  // SettleUp 無專案資訊
+    recordType: 'expense',  // 固定為支出記錄
     type: type
   };
 }
@@ -2452,11 +2880,17 @@ function addSettlement(direction, amount, date, note) {
     item += ' - ' + escapeHtml(note.trim());
   }
 
+  // 取得當前使用者
+  const currentUser = Session.getActiveUser().getEmail();
+
   // 結算記錄的欄位
   const row = [
     date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
     item,
-    amount,
+    amount,  // 金額(TWD)
+    amount,  // 原始金額（TWD情況下相同）
+    'TWD',  // 幣別
+    1,  // 匯率（TWD=1）
     direction === 'partner_pay_me' ? '對方' : '你',  // 付款人（誰給錢）
     direction === 'partner_pay_me' ? '對方' : '你',  // 實際付款人
     0,  // 你的部分
@@ -2464,19 +2898,22 @@ function addSettlement(direction, amount, date, note) {
     0,  // 你實付
     0,  // 對方實付
     '結算',  // 分類
+    '',  // 付款帳戶（結算記錄不使用）
+    '',  // 專案（結算記錄不使用）
     false,  // 是否週期
     '',  // 週期日期
     id,
-    'settlement'  // 記錄類型：結算
+    'settlement',  // 記錄類型：結算
+    currentUser  // 記錄擁有者：記錄是誰執行結算的
   ];
 
   sheet.appendRow(row);
 
   const lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow, 1, 1, 14).setHorizontalAlignment('center');
+  sheet.getRange(lastRow, 1, 1, 20).setHorizontalAlignment('center');
 
   // 設定特殊背景色（淺綠色）
-  sheet.getRange(lastRow, 1, 1, 14).setBackground('#d1fae5');
+  sheet.getRange(lastRow, 1, 1, 20).setBackground('#d1fae5');
 
   return {
     success: true,
@@ -2598,4 +3035,401 @@ function diagnoseExpenseData() {
     partnerActualSum: partnerActualSum,
     emptyPartCount: emptyPartCount
   };
+}
+
+// ==================== AndroMoney 匯入功能 ====================
+
+/**
+ * AndroMoney 匯入主函式
+ * 從同資料夾中的 "AndroMoney" 試算表匯入資料
+ */
+function importAndroMoneyCSV() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const expensesSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+  if (!expensesSheet) {
+    ui.alert('❌ 錯誤', '找不到「支出記錄」工作表。請先執行「初始化系統」。', ui.ButtonSet.OK);
+    return;
+  }
+
+  try {
+    // 尋找 AndroMoney 試算表
+    const spreadsheetFile = DriveApp.getFileById(ss.getId());
+    const parentFolders = spreadsheetFile.getParents();
+
+    if (!parentFolders.hasNext()) {
+      ui.alert('❌ 錯誤', '無法取得試算表所在資料夾', ui.ButtonSet.OK);
+      return;
+    }
+
+    const folder = parentFolders.next();
+    let androMoneySpreadsheet = null;
+    const files = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
+
+    while (files.hasNext()) {
+      const file = files.next();
+      const fileName = file.getName();
+
+      if (fileName.toLowerCase() === 'andromoney') {
+        androMoneySpreadsheet = SpreadsheetApp.openById(file.getId());
+        break;
+      }
+    }
+
+    if (!androMoneySpreadsheet) {
+      ui.alert(
+        '❌ 錯誤',
+        '找不到名為「AndroMoney」的試算表。\n\n' +
+        '請確認：\n' +
+        '1. 已將 AndroMoney.csv 匯入 Google Sheets\n' +
+        '2. 試算表名稱為「AndroMoney」\n' +
+        '3. 試算表與本系統在同一資料夾',
+        ui.ButtonSet.OK
+      );
+      return;
+    }
+
+    const sheet = androMoneySpreadsheet.getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+
+    const expenses = [];
+    let skippedInit = 0;
+    let skippedTransfer = 0;
+    let incomeCount = 0;
+    let errors = [];
+
+    // 從第 3 行開始（跳過前 2 行標題）
+    for (let i = 2; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0] && !row[2]) continue; // 跳過空行
+
+      try {
+        const expense = parseAndroMoneyRow(row, i + 1);
+
+        // 跳過不同類型的記錄
+        if (expense.type === 'init') {
+          skippedInit++;
+          continue;
+        }
+
+        if (expense.type === 'transfer') {
+          skippedTransfer++;
+          continue;
+        }
+
+        if (expense.type === 'income') {
+          incomeCount++;
+        }
+
+        expenses.push(expense);
+      } catch (e) {
+        if (errors.length < 10) {
+          Logger.log('第 ' + (i + 1) + ' 行錯誤: ' + e.message);
+        }
+        errors.push(`第 ${i + 1} 行：${e.message}`);
+      }
+    }
+
+    if (expenses.length === 0) {
+      ui.alert('⚠️ 無資料', '沒有可匯入的記錄。', ui.ButtonSet.OK);
+      return;
+    }
+
+    // 取得當前使用者
+    const currentUser = Session.getActiveUser().getEmail();
+
+    // 寫入試算表
+    const dataToWrite = expenses.map(exp => [
+      exp.date,
+      exp.item,
+      exp.twdAmount,  // 金額(TWD) - 換算後的台幣金額
+      exp.originalAmount,  // 原始金額
+      exp.currency,  // 幣別
+      exp.exchangeRate,  // 匯率
+      exp.payer,
+      exp.actualPayer || exp.payer,
+      exp.yourPart,
+      exp.partnerPart,
+      exp.yourActualPaid || 0,
+      exp.partnerActualPaid || 0,
+      exp.category,
+      exp.paymentAccount || '',  // 付款帳戶（從 AndroMoney 匯入）
+      exp.project || '',  // 專案（從 AndroMoney 匯入）
+      false, // isRecurring
+      '', // recurringDay
+      new Date().getTime() + Math.random(), // ID
+      exp.recordType, // recordType
+      currentUser  // recordOwner：個人記帳匯入時，記錄擁有者為當前使用者
+    ]);
+
+    const lastRow = expensesSheet.getLastRow();
+    expensesSheet.getRange(lastRow + 1, 1, dataToWrite.length, 20).setValues(dataToWrite);
+
+    // 顯示結果
+    let message = `✅ 匯入完成！\n\n` +
+                  `✓ 成功匯入：${expenses.length - incomeCount} 筆個人支出\n` +
+                  `✓ 成功匯入：${incomeCount} 筆收入記錄\n` +
+                  `✓ 已跳過：${skippedInit} 筆初始餘額記錄\n` +
+                  `✓ 已跳過：${skippedTransfer} 筆轉帳記錄\n\n` +
+                  `📝 個人記帳記錄已標記為 'personal' 類型\n` +
+                  `💰 收入記錄已標記為 'income' 類型`;
+
+    if (errors.length > 0) {
+      message += `\n\n⚠️ 錯誤記錄（${errors.length} 筆）：\n` + errors.slice(0, 5).join('\n');
+      if (errors.length > 5) {
+        message += `\n... 還有 ${errors.length - 5} 筆錯誤`;
+      }
+    }
+
+    ui.alert('📥 匯入結果', message, ui.ButtonSet.OK);
+
+  } catch (e) {
+    ui.alert('❌ 匯入失敗', '發生錯誤：' + e.message, ui.ButtonSet.OK);
+    Logger.log('匯入錯誤：' + e.toString());
+  }
+}
+
+/**
+ * 解析 AndroMoney CSV 的單一列
+ * AndroMoney 格式：
+ * Id, 幣別, 金額, 分類, 子分類, 日期, 付款(轉出), 收款(轉入), 備註, Periodic, 專案, 商家(公司), uid, 時間
+ * 索引: 0   1     2     3     4       5      6          7          8      9         10    11        12   13
+ */
+function parseAndroMoneyRow(row, rowNum) {
+  if (row.length < 8) {
+    throw new Error('欄位數量不足');
+  }
+
+  const id = String(row[0] || '').trim();
+  const currency = String(row[1] || '').trim();
+  const amount = parseFloat(row[2]) || 0;
+  const category = String(row[3] || '').trim();
+  const subCategory = String(row[4] || '').trim();
+  const dateStr = String(row[5] || '').trim();
+  const paymentAccount = String(row[6] || '').trim(); // 付款(轉出)
+  const receiveAccount = String(row[7] || '').trim(); // 收款(轉入)
+  const note = String(row[8] || '').trim();
+  const periodic = String(row[9] || '').trim(); // 週期性記帳
+  const project = String(row[10] || '').trim(); // 專案
+  const merchant = String(row[11] || '').trim(); // 商家(公司)
+  const timeStr = row.length > 13 ? String(row[13] || '').trim() : '';
+
+  // 檢查是否為初始餘額記錄
+  if (category === 'SYSTEM' && subCategory === 'INIT_AMOUNT') {
+    return { type: 'init' };
+  }
+
+  // 檢查是否為轉帳記錄（同時有付款和收款帳戶）
+  if (paymentAccount && receiveAccount) {
+    return { type: 'transfer' };
+  }
+
+  // 解析日期：格式為 YYYYMMDD 或 YYMMDD
+  let date;
+  try {
+    if (dateStr.length === 8) {
+      // YYYYMMDD
+      const year = parseInt(dateStr.substring(0, 4));
+      const month = parseInt(dateStr.substring(4, 6)) - 1;
+      const day = parseInt(dateStr.substring(6, 8));
+      date = new Date(year, month, day);
+    } else if (dateStr.length === 6) {
+      // YYMMDD
+      const year = 2000 + parseInt(dateStr.substring(0, 2));
+      const month = parseInt(dateStr.substring(2, 4)) - 1;
+      const day = parseInt(dateStr.substring(4, 6));
+      date = new Date(year, month, day);
+    } else {
+      date = new Date();
+    }
+
+    // 如果有時間資訊，嘗試加入
+    if (timeStr) {
+      const timeMatch = timeStr.match(/(\d{1,2}):?(\d{2})/);
+      if (timeMatch) {
+        date.setHours(parseInt(timeMatch[1]));
+        date.setMinutes(parseInt(timeMatch[2]));
+      }
+    }
+  } catch (e) {
+    date = new Date();
+  }
+
+  // 確認貨幣類型
+  if (currency !== 'TWD' && currency !== '') {
+    Logger.log(`警告：第 ${rowNum} 行使用非 TWD 貨幣 (${currency})`);
+  }
+
+  // 組合項目名稱
+  let item = subCategory || category || '支出';
+
+  // 優先順序: 備註 > 商家 > 子分類 > 分類
+  if (note && note.length > 0) {
+    // 如果備註太長(例如電子發票明細),只取前50字
+    item = note.length > 50 ? note.substring(0, 50) + '...' : note;
+  } else if (merchant && merchant.length > 0) {
+    item = merchant;
+  }
+
+  // 如果有專案,加在前面
+  if (project && project.length > 0) {
+    item = `[${project}] ${item}`;
+  }
+
+  // 確定記錄類型
+  let recordType = 'personal';
+  let isIncome = false;
+
+  // 判斷是收入還是支出
+  if (!paymentAccount && receiveAccount) {
+    recordType = 'income';
+    isIncome = true;
+  }
+
+  // 取得或偵測分類
+  const finalCategory = mapAndroMoneyCategory(category, subCategory);
+
+  // 計算匯率和 TWD 金額
+  const originalAmount = Math.abs(amount);
+  let exchangeRate = 1;
+  let twdAmount = originalAmount;
+
+  if (currency !== 'TWD' && currency !== '') {
+    // 取得匯率（這裡先用固定匯率,之後可改為從設定表讀取）
+    exchangeRate = getExchangeRate(currency);
+    twdAmount = Math.round(originalAmount * exchangeRate);
+  }
+
+  return {
+    type: isIncome ? 'income' : 'expense',
+    date: Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy/MM/dd HH:mm'),
+    item: item,
+    twdAmount: twdAmount,  // 換算後的 TWD 金額
+    originalAmount: originalAmount,  // 原始金額
+    currency: currency || 'TWD',  // 幣別
+    exchangeRate: exchangeRate,  // 匯率
+    payer: '我',
+    actualPayer: '我',
+    yourPart: isIncome ? 0 : twdAmount,
+    partnerPart: 0,
+    yourActualPaid: isIncome ? 0 : twdAmount,
+    partnerActualPaid: 0,
+    category: finalCategory,
+    paymentAccount: isIncome ? receiveAccount : paymentAccount,  // 收入用收款帳戶,支出用付款帳戶
+    project: project,  // 專案
+    recordType: recordType,
+    splitType: isIncome ? '' : '全我'
+  };
+}
+
+/**
+ * 取得指定貨幣的匯率
+ * 優先從設定表讀取,若讀取失敗則使用預設匯率
+ */
+function getExchangeRate(currency) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+
+    if (settingsSheet) {
+      // 讀取匯率表 (從第22行開始,共10種貨幣)
+      const rateData = settingsSheet.getRange(22, 1, 10, 3).getValues();
+
+      for (let i = 0; i < rateData.length; i++) {
+        const currencyCode = String(rateData[i][0]).trim();
+        const rate = parseFloat(rateData[i][2]);
+
+        if (currencyCode === currency && rate > 0) {
+          return rate;
+        }
+      }
+    }
+  } catch (e) {
+    Logger.log('從設定表讀取匯率失敗: ' + e.toString());
+  }
+
+  // 如果從設定表讀取失敗,使用預設匯率
+  const defaultRates = {
+    'JPY': 0.21,    // 日幣
+    'USD': 31.5,    // 美金
+    'EUR': 34.5,    // 歐元
+    'HKD': 4.05,    // 港幣
+    'CNY': 4.35,    // 人民幣
+    'KRW': 0.024,   // 韓元
+    'SGD': 23.5,    // 新加坡幣
+    'GBP': 40.0,    // 英鎊
+    'AUD': 20.5,    // 澳幣
+    'THB': 0.92     // 泰銖
+  };
+
+  if (defaultRates[currency]) {
+    return defaultRates[currency];
+  }
+
+  // 如果找不到匯率,記錄警告並返回 1
+  Logger.log(`警告：找不到 ${currency} 的匯率，使用預設值 1`);
+  return 1;
+}
+
+/**
+ * 將 AndroMoney 分類對應到系統分類
+ */
+function mapAndroMoneyCategory(category, subCategory) {
+  const androCategory = subCategory || category;
+
+  const categoryMap = {
+    // 餐飲食品
+    '早餐': '餐飲', '午餐': '餐飲', '晚餐': '餐飲',
+    '飲料': '餐飲', '點心零嘴': '餐飲', '食材': '餐飲',
+    '餐飲食品': '餐飲',
+
+    // 運輸交通
+    '交通': '交通', '運輸交通': '交通',
+    '停車費': '交通', '計程車': '交通', '公車': '交通',
+    '大眾運輸': '交通', '油錢': '交通', '悠遊卡': '交通',
+    '火車': '交通', '捷運': '交通', '高鐵': '交通',
+
+    // 汽機車
+    '汽機車': '交通', '維修保養': '交通',
+
+    // 休閒娛樂
+    '休閒娛樂': '娛樂', 'Shopping': '娛樂',
+    '電影': '娛樂', '旅遊': '娛樂', '運動': '娛樂',
+
+    // 居家生活
+    '居家生活': '生活', '家電用品': '生活', '日用品': '生活',
+    '服飾': '生活', '美容': '生活', '美髮': '生活',
+
+    // 教育學習
+    '教育學習': '學習', '文具': '學習', '書籍': '學習',
+    '課程': '學習', '補習': '學習',
+
+    // 醫療保健
+    '醫療': '醫療', '醫療保健': '醫療',
+    '保健': '醫療', '藥品': '醫療', '看病': '醫療',
+
+    // 3C通訊
+    '3C通訊': '3C', '電腦商品': '3C', '手機': '3C',
+    '相機': '3C', '軟體': '3C',
+
+    // 人情交際
+    '人情交際': '交際', '孝養父母': '交際',
+    '禮金': '交際', '紅包': '交際',
+
+    // 電子發票
+    '電子發票': '其他', '手機載具': '其他',
+
+    // 其他
+    '其他': '其他',
+
+    // 收入類
+    '一般收入': '收入', '零用錢': '收入',
+    '薪資': '收入', '公司薪資': '收入',
+    '獎金': '收入', '利息': '收入',
+    '兼差': '收入', '打工': '收入',
+    '收取還款': '收入'
+  };
+
+  return categoryMap[androCategory] || category || '其他';
 }
