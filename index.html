@@ -319,6 +319,11 @@
       border-left: 3px solid #a855f7;
     }
 
+    .expense-item.income {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      border-left: 3px solid #10b981;
+    }
+
     .expense-info {
       flex: 1;
       min-width: 0;
@@ -1216,7 +1221,15 @@
 
     <!-- 新增支出表單 -->
     <div class="form-section">
-      <h2 style="margin-bottom: 15px;">💰 新增支出</h2>
+      <!-- 記帳類型切換按鈕（僅個人記帳模式顯示） -->
+      <div id="recordTypeToggle" style="display: none; margin-bottom: 15px;">
+        <div style="display: inline-flex; gap: 0; border: 2px solid #667eea; border-radius: 10px; overflow: hidden;">
+          <button id="expenseToggleBtn" class="record-type-btn active" onclick="switchRecordType('expense')" style="padding: 10px 20px; border: none; background: #667eea; color: white; cursor: pointer; transition: all 0.3s; font-weight: 500;">💸 支出</button>
+          <button id="incomeToggleBtn" class="record-type-btn" onclick="switchRecordType('income')" style="padding: 10px 20px; border: none; background: white; color: #667eea; cursor: pointer; transition: all 0.3s; font-weight: 500;">💰 收入</button>
+        </div>
+      </div>
+
+      <h2 style="margin-bottom: 15px;" id="formTitle">💰 新增支出</h2>
 
       <!-- 快速記账按钮 -->
       <div style="margin-bottom: 20px;">
@@ -1245,7 +1258,7 @@
         <input type="number" id="amount" placeholder="0">
       </div>
 
-      <div class="form-group payer-field">
+      <div class="form-group payer-field expense-only">
         <label>誰付錢</label>
         <select id="actualPayer" onchange="updatePaymentMethod()">
           <option value="you">我</option>
@@ -1256,7 +1269,7 @@
       </div>
 
       <!-- 不等額墊付的金額輸入 -->
-      <div class="form-group payer-field hidden" id="unequalPaymentFields">
+      <div class="form-group payer-field expense-only hidden" id="unequalPaymentFields">
         <label>實際付款金額</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
@@ -1273,7 +1286,7 @@
         </div>
       </div>
 
-      <div class="form-group split-field">
+      <div class="form-group split-field expense-only">
         <label>幫誰付款（可複選）</label>
         <div style="display: flex; gap: 20px; align-items: center;">
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
@@ -1287,7 +1300,7 @@
         </div>
       </div>
 
-      <div class="form-group split-field hidden" id="splitMethodGroup">
+      <div class="form-group split-field expense-only hidden" id="splitMethodGroup">
         <label>分帳方式</label>
         <div style="display: flex; gap: 10px; margin-bottom: 10px;">
           <button type="button" id="autoSplitBtn" class="split-method-btn active" onclick="setSplitMethod('auto')">自動均分</button>
@@ -1296,7 +1309,7 @@
         </div>
       </div>
 
-      <div class="form-group split-field hidden" id="amountSplitGroup">
+      <div class="form-group split-field expense-only hidden" id="amountSplitGroup">
         <label>自訂分帳金額</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
@@ -1311,7 +1324,7 @@
         </div>
       </div>
 
-      <div class="form-group split-field hidden" id="ratioSplitGroup">
+      <div class="form-group split-field expense-only hidden" id="ratioSplitGroup">
         <label>自訂分帳比例</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
@@ -1338,15 +1351,26 @@
         </div>
       </div>
 
+      <!-- 收入專用欄位 -->
+      <div class="form-group income-only" style="display: none;">
+        <label>付款帳戶（選填）</label>
+        <input type="text" id="paymentAccount" placeholder="例如：玉山銀行、LINE Pay">
+      </div>
+
+      <div class="form-group income-only" style="display: none;">
+        <label>專案（選填）</label>
+        <input type="text" id="project" placeholder="例如：副業、租金">
+      </div>
+
       <!-- 週期支出設定 -->
-      <div class="form-group">
+      <div class="form-group expense-only">
         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
           <input type="checkbox" id="isRecurring" onchange="toggleRecurringDay()" style="width: auto; cursor: pointer;">
           <span>🔄 設為週期支出（每月固定日期自動記帳）</span>
         </label>
       </div>
 
-      <div class="form-group hidden" id="recurringDayGroup">
+      <div class="form-group expense-only hidden" id="recurringDayGroup">
         <label>每月執行日（1-31）</label>
         <input type="number" id="recurringDay" placeholder="例如：1（每月 1 號）" min="1" max="31">
         <small style="color: #666; font-size: 0.85em; margin-top: 5px; display: block;">
@@ -1355,7 +1379,7 @@
       </div>
 
       <div style="display: flex; gap: 10px;">
-        <button class="btn btn-primary" onclick="addExpense()" style="flex: 1;">新增支出</button>
+        <button id="submitBtn" class="btn btn-primary" onclick="submitRecord()" style="flex: 1;">新增支出</button>
         <button class="btn settlement-section" onclick="openSettlementModal()" style="flex: 1; background: #10b981; color: white;">💰 記錄結算</button>
       </div>
     </div>
@@ -1954,6 +1978,12 @@
         section.style.display = isPersonalMode ? 'none' : '';
       });
 
+      // 個人模式顯示收入/支出切換按鈕
+      const recordTypeToggle = document.getElementById('recordTypeToggle');
+      if (recordTypeToggle) {
+        recordTypeToggle.style.display = isPersonalMode ? 'block' : 'none';
+      }
+
       // 個人模式時，自動設定付款人為「你」，分帳為100%/0%
       if (isPersonalMode) {
         const payerRadios = document.querySelectorAll('input[name="payer"]');
@@ -2330,13 +2360,18 @@
       let settlementCount = 0; // 結算記錄數量
       let settlementDetails = []; // 結算記錄明細
       let expenseCount = 0; // 支出記錄數量
+      let totalIncome = 0; // 總收入（僅個人記帳使用）
 
       // 計算總計（使用全部資料）
       // 確保 allExpenses 存在且為陣列
       if (allExpenses && Array.isArray(allExpenses)) {
         allExpenses.forEach(function(exp) {
+        // 檢查是否為收入記錄（僅個人記帳）
+        if (exp.recordType === 'income') {
+          totalIncome += Number(exp.amount) || 0;
+        }
         // 檢查是否為結算記錄
-        if (exp.recordType === 'settlement' || exp.category === '結算') {
+        else if (exp.recordType === 'settlement' || exp.category === '結算') {
           // 結算記錄：直接調整餘額
           const amount = Number(exp.amount) || 0;
           settlementCount++;
@@ -2419,7 +2454,7 @@
 
       const balanceEl = document.getElementById('balance');
 
-      // 個人模式：顯示總支出
+      // 個人模式：顯示淨收入（收入 - 支出）
       if (appSettings.mode === '個人記帳') {
         if (!allExpensesLoaded) {
           balanceEl.textContent = '計算中...';
@@ -2428,8 +2463,14 @@
           balanceEl.textContent = '尚無記錄';
           balanceEl.style.color = '#999';
         } else {
-          balanceEl.textContent = '總支出 ' + formatMoney(total);
-          balanceEl.style.color = '';
+          const netIncome = totalIncome - total;
+          if (netIncome >= 0) {
+            balanceEl.textContent = '淨收入 +' + formatMoney(netIncome) + ' (收入 ' + formatMoney(totalIncome) + ' - 支出 ' + formatMoney(total) + ')';
+            balanceEl.style.color = '#10b981';  // 綠色
+          } else {
+            balanceEl.textContent = '淨收入 ' + formatMoney(netIncome) + ' (收入 ' + formatMoney(totalIncome) + ' - 支出 ' + formatMoney(total) + ')';
+            balanceEl.style.color = '#ef4444';  // 紅色
+          }
         }
       } else {
         // 共同記帳模式：顯示餘額
@@ -2512,9 +2553,16 @@
         '</div>';
 
         exps.forEach(function(exp) {
-          const className = exp.payer === '你' ? 'you' : exp.payer === '對方' ? 'partner' : 'both';
+          // 判斷記錄類型和樣式
+          let className, icon;
+          if (exp.recordType === 'income') {
+            className = 'income';  // 收入使用特殊樣式
+            icon = '💰';
+          } else {
+            className = exp.payer === '你' ? 'you' : exp.payer === '對方' ? 'partner' : 'both';
+            icon = categoryIcons[exp.category] || '📦';
+          }
           const splitInfo = exp.payer === '兩人' ? '<br><small>(你: ' + formatMoney(Number(exp.yourPart)) + ' / 對方: ' + formatMoney(Number(exp.partnerPart)) + ')</small>' : '';
-          const icon = categoryIcons[exp.category] || '📦';
 
           // 使用安全的 HTML 轉義
           const safeItem = escapeHtml(exp.item);
@@ -3180,6 +3228,121 @@
 
       // 顯示提示
       showToast('已填入「' + item + ' $' + amount + '」，可修改金額後送出', 'success');
+    }
+
+    /**
+     * 記帳類型切換（支出/收入）
+     */
+    let currentRecordType = 'expense';  // 'expense' 或 'income'
+
+    function switchRecordType(type) {
+      currentRecordType = type;
+
+      // 更新切換按鈕樣式
+      const expenseBtn = document.getElementById('expenseToggleBtn');
+      const incomeBtn = document.getElementById('incomeToggleBtn');
+      const formTitle = document.getElementById('formTitle');
+      const submitBtn = document.getElementById('submitBtn');
+
+      if (type === 'expense') {
+        expenseBtn.style.background = '#667eea';
+        expenseBtn.style.color = 'white';
+        incomeBtn.style.background = 'white';
+        incomeBtn.style.color = '#667eea';
+        formTitle.textContent = '💰 新增支出';
+        submitBtn.textContent = '新增支出';
+
+        // 顯示支出欄位，隱藏收入欄位
+        document.querySelectorAll('.expense-only').forEach(el => el.style.display = '');
+        document.querySelectorAll('.income-only').forEach(el => el.style.display = 'none');
+      } else {
+        expenseBtn.style.background = 'white';
+        expenseBtn.style.color = '#667eea';
+        incomeBtn.style.background = '#667eea';
+        incomeBtn.style.color = 'white';
+        formTitle.textContent = '💰 新增收入';
+        submitBtn.textContent = '新增收入';
+
+        // 隱藏支出欄位，顯示收入欄位
+        document.querySelectorAll('.expense-only').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.income-only').forEach(el => el.style.display = '');
+      }
+    }
+
+    /**
+     * 統一的提交函數（根據當前類型呼叫對應函數）
+     */
+    function submitRecord() {
+      if (currentRecordType === 'expense') {
+        addExpense();
+      } else {
+        addIncome();
+      }
+    }
+
+    /**
+     * 新增收入記錄
+     */
+    function addIncome() {
+      const item = document.getElementById('item').value.trim();
+      const amount = parseFloat(document.getElementById('amount').value);
+      const mainCategory = document.getElementById('mainCategory').value;
+      const subCategory = document.getElementById('subCategory').value;
+      const category = subCategory ? (mainCategory + '>' + subCategory) : mainCategory;
+      const paymentAccount = document.getElementById('paymentAccount').value.trim();
+      const project = document.getElementById('project').value.trim();
+      const incomeDate = document.getElementById('expenseDate').value;
+      const incomeTime = document.getElementById('expenseTime').value;
+
+      // 前端驗證
+      if (!validateInput(item, 'text', 1, 100)) {
+        showToast('項目名稱必須是 1-100 字元', 'error');
+        return;
+      }
+
+      if (!validateInput(amount, 'number', 0.01, 9999999)) {
+        showToast('請輸入有效金額（0.01 到 9,999,999）', 'error');
+        return;
+      }
+
+      const incomeData = {
+        item: item,
+        amount: amount,
+        category: category || '收入',
+        paymentAccount: paymentAccount,
+        project: project,
+        incomeDate: incomeDate,
+        incomeTime: incomeTime
+      };
+
+      // 禁用按鈕防止重複提交
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '新增中...';
+
+      google.script.run
+        .withSuccessHandler(function(id) {
+          showToast('✅ 收入記錄已新增！', 'success');
+
+          // 清空表單
+          document.getElementById('item').value = '';
+          document.getElementById('amount').value = '';
+          document.getElementById('paymentAccount').value = '';
+          document.getElementById('project').value = '';
+
+          // 重新載入資料
+          refreshData();
+
+          // 恢復按鈕
+          submitBtn.disabled = false;
+          submitBtn.textContent = '新增收入';
+        })
+        .withFailureHandler(function(error) {
+          showToast('❌ 新增失敗：' + error.message, 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = '新增收入';
+        })
+        .addIncomeFromWeb(incomeData);
     }
 
     function addExpense() {

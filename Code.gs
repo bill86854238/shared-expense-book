@@ -524,6 +524,124 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
   return id;
 }
 
+/**
+ * 新增收入記錄（僅用於個人記帳模式）
+ */
+function addIncome(item, amount, category, paymentAccount, project, incomeDate, incomeTime, currency, originalAmount) {
+  // 檢查頻率限制
+  checkRateLimit('addIncome');
+
+  // 權限驗證
+  const permission = checkUserPermission();
+  if (!permission.allowed) {
+    throw new Error(permission.message || '權限不足');
+  }
+
+  // 檢查記帳模式
+  const appSettings = getAppSettings();
+  const accountingMode = appSettings.mode || '共同記帳';
+
+  if (accountingMode !== '個人記帳') {
+    throw new Error('收入記錄僅適用於個人記帳模式');
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+  if (!sheet) {
+    throw new Error('找不到支出工作表');
+  }
+
+  // 基本驗證
+  if (!item || item.trim() === '') {
+    throw new Error('項目不能為空');
+  }
+
+  if (!amount || isNaN(amount) || amount <= 0) {
+    throw new Error('金額必須大於 0');
+  }
+
+  // 安全性處理
+  const safeItem = escapeHtml(item.trim());
+  const safeCategory = escapeHtml((category || '收入').trim());
+  const safePaymentAccount = escapeHtml((paymentAccount || '').trim());
+  const safeProject = escapeHtml((project || '').trim());
+
+  // 處理日期和時間
+  let date = new Date();
+  if (incomeDate) {
+    try {
+      date = new Date(incomeDate);
+      if (incomeTime) {
+        const [hours, minutes] = incomeTime.split(':');
+        date.setHours(parseInt(hours) || 0, parseInt(minutes) || 0, 0, 0);
+      }
+    } catch (e) {
+      Logger.log('日期時間解析失敗，使用當前時間：' + e);
+    }
+  }
+
+  // 產生唯一 ID
+  const id = new Date().getTime() + '_' + Math.random().toString(36).substr(2, 9);
+
+  // 處理多幣別
+  const finalCurrency = currency || 'TWD';
+  let finalOriginalAmount = originalAmount || amount;
+  let exchangeRate = 1;
+  let twdAmount = amount;
+
+  if (finalCurrency !== 'TWD' && originalAmount) {
+    exchangeRate = amount / originalAmount;
+    twdAmount = amount;
+    finalOriginalAmount = originalAmount;
+  } else if (finalCurrency !== 'TWD' && !originalAmount) {
+    exchangeRate = getExchangeRate(finalCurrency);
+    finalOriginalAmount = Math.round(amount / exchangeRate);
+    twdAmount = amount;
+  } else {
+    exchangeRate = 1;
+    twdAmount = amount;
+    finalOriginalAmount = amount;
+  }
+
+  // 取得當前使用者
+  const currentUser = Session.getActiveUser().getEmail();
+
+  const row = [
+    Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    safeItem,
+    twdAmount,  // 金額(TWD)
+    finalOriginalAmount,  // 原始金額
+    finalCurrency,  // 幣別
+    exchangeRate,  // 匯率
+    '',  // 付款人（收入不需要）
+    '',  // 實際付款人（收入不需要）
+    0,  // 你的部分（收入不需要）
+    0,  // 對方的部分（收入不需要）
+    0,  // 你實付（收入不需要）
+    0,  // 對方實付（收入不需要）
+    safeCategory,
+    safePaymentAccount,  // 付款帳戶
+    safeProject,  // 專案
+    false,  // 是否週期
+    '',  // 週期日期
+    id,
+    'income',  // 記錄類型：收入
+    currentUser  // 記錄擁有者
+  ];
+
+  sheet.appendRow(row);
+
+  const lastRow = sheet.getLastRow();
+  sheet.getRange(lastRow, 1, 1, 20).setHorizontalAlignment('center');
+
+  // 收入使用綠色背景
+  sheet.getRange(lastRow, 1, 1, 20).setBackground('#d1f4dd');
+
+  // 記錄日誌
+  logAction('新增收入', `項目: ${safeItem}, 金額: ${amount}, 分類: ${safeCategory}`);
+
+  return id;
+}
+
 function executeRecurringExpenses() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const recurringSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.RECURRING);
@@ -894,8 +1012,8 @@ function getExpenses(filters) {
 
     // 根據記帳模式過濾記錄（只用 recordType 判斷）
     if (accountingMode === '個人記帳') {
-      // 個人記帳模式：只顯示當前使用者的個人記帳記錄
-      if (recordType !== 'personal') {
+      // 個人記帳模式：顯示當前使用者的個人記帳記錄和收入記錄
+      if (recordType !== 'personal' && recordType !== 'income') {
         Logger.log(`跳過記錄（recordType=${recordType}）：${data[i][1]}`);
         continue;
       }
@@ -1013,8 +1131,8 @@ function getAllExpenses(accountingMode) {
 
     // 根據記帳模式過濾記錄（只用 recordType 判斷）
     if (accountingMode === '個人記帳') {
-      // 個人記帳模式：只顯示當前使用者的個人記帳記錄
-      if (recordType !== 'personal') {
+      // 個人記帳模式：顯示當前使用者的個人記帳記錄和收入記錄
+      if (recordType !== 'personal' && recordType !== 'income') {
         Logger.log(`跳過記錄（recordType=${recordType}）：${data[i][1]}`);
         continue;
       }
@@ -1076,6 +1194,23 @@ function addExpenseFromWeb(expenseData) {
     expenseData.expenseTime || null,  // 支出時間
     expenseData.currency || null,  // 幣別
     expenseData.originalAmount || null  // 原始金額
+  );
+}
+
+/**
+ * 從網頁新增收入記錄
+ */
+function addIncomeFromWeb(incomeData) {
+  return addIncome(
+    incomeData.item,
+    incomeData.amount,
+    incomeData.category,
+    incomeData.paymentAccount || '',
+    incomeData.project || '',
+    incomeData.incomeDate || null,
+    incomeData.incomeTime || null,
+    incomeData.currency || null,
+    incomeData.originalAmount || null
   );
 }
 
