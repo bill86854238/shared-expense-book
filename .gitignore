@@ -2,5 +2,23 @@ node_modules/
 .DS_Store
 *.log
 
-# 個人文章草稿（不分享）
+# 個資檔案
+AndroMoney.csv
+SettleUp*.txt
+SettleUp*.csv
+*.csv
+*.txt
+
+# 個人文章草稿
 方格子文章.md
+
+# 多餘的說明檔案（不需要公開）
+UI優化說明.md
+多幣別功能說明.md
+成員管理說明.md
+完整功能清單.md
+最終安全報告.md
+最終部署指南.md
+測試清單.md
+新功能說明.md
+資安說明.md
