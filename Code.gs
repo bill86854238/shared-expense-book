@@ -1,6 +1,7 @@
 /**
  * 情侶共同記帳系統 - Google Apps Script
- * 完整版本
+ * 完整版本（簡化版）
+ * v2.56 - 移除多幣別功能，固定使用 TWD，保持簡單
  */
 
 // ==================== 設定區 ====================
@@ -377,7 +378,7 @@ function getCategoriesFromSettings() {
   }
 }
 
-function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid, expenseDate, expenseTime, currency, originalAmount) {
+function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid, expenseDate, expenseTime) {
   // 檢查頻率限制
   checkRateLimit('addExpense');
 
@@ -446,28 +447,11 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
     }
   }
 
-  // 處理多幣別
-  const finalCurrency = currency || 'TWD';
-  let finalOriginalAmount = originalAmount || amount;
-  let exchangeRate = 1;
-  let twdAmount = amount;
-
-  if (finalCurrency !== 'TWD' && originalAmount) {
-    // 有提供原始金額和外幣,計算匯率
-    exchangeRate = amount / originalAmount;
-    twdAmount = amount;
-    finalOriginalAmount = originalAmount;
-  } else if (finalCurrency !== 'TWD' && !originalAmount) {
-    // 只有幣別沒有原始金額,反推原始金額
-    exchangeRate = getExchangeRate(finalCurrency);
-    finalOriginalAmount = Math.round(amount / exchangeRate);
-    twdAmount = amount;
-  } else {
-    // TWD 情況
-    exchangeRate = 1;
-    twdAmount = amount;
-    finalOriginalAmount = amount;
-  }
+  // 簡化版：固定使用 TWD
+  const twdAmount = amount;
+  const finalOriginalAmount = amount;
+  const finalCurrency = 'TWD';
+  const exchangeRate = 1;
 
   // 取得記帳模式和當前使用者
   const appSettings = getAppSettings();
@@ -527,7 +511,7 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
 /**
  * 新增收入記錄（僅用於個人記帳模式）
  */
-function addIncome(item, amount, category, paymentAccount, project, incomeDate, incomeTime, currency, originalAmount) {
+function addIncome(item, amount, category, incomeDate, incomeTime) {
   // 檢查頻率限制
   checkRateLimit('addIncome');
 
@@ -562,8 +546,6 @@ function addIncome(item, amount, category, paymentAccount, project, incomeDate, 
   // 安全性處理
   const safeItem = escapeHtml(item.trim());
   const safeCategory = escapeHtml((category || '收入').trim());
-  const safePaymentAccount = escapeHtml((paymentAccount || '').trim());
-  const safeProject = escapeHtml((project || '').trim());
 
   // 處理日期和時間
   let date = new Date();
@@ -582,36 +564,16 @@ function addIncome(item, amount, category, paymentAccount, project, incomeDate, 
   // 產生唯一 ID
   const id = new Date().getTime() + '_' + Math.random().toString(36).substr(2, 9);
 
-  // 處理多幣別
-  const finalCurrency = currency || 'TWD';
-  let finalOriginalAmount = originalAmount || amount;
-  let exchangeRate = 1;
-  let twdAmount = amount;
-
-  if (finalCurrency !== 'TWD' && originalAmount) {
-    exchangeRate = amount / originalAmount;
-    twdAmount = amount;
-    finalOriginalAmount = originalAmount;
-  } else if (finalCurrency !== 'TWD' && !originalAmount) {
-    exchangeRate = getExchangeRate(finalCurrency);
-    finalOriginalAmount = Math.round(amount / exchangeRate);
-    twdAmount = amount;
-  } else {
-    exchangeRate = 1;
-    twdAmount = amount;
-    finalOriginalAmount = amount;
-  }
-
   // 取得當前使用者
   const currentUser = Session.getActiveUser().getEmail();
 
   const row = [
     Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
     safeItem,
-    twdAmount,  // 金額(TWD)
-    finalOriginalAmount,  // 原始金額
-    finalCurrency,  // 幣別
-    exchangeRate,  // 匯率
+    amount,  // 金額(TWD)
+    amount,  // 原始金額（簡化版統一用TWD）
+    'TWD',  // 幣別（簡化版固定TWD）
+    1,  // 匯率（簡化版固定1）
     '',  // 付款人（收入不需要）
     '',  // 實際付款人（收入不需要）
     0,  // 你的部分（收入不需要）
@@ -619,8 +581,8 @@ function addIncome(item, amount, category, paymentAccount, project, incomeDate, 
     0,  // 你實付（收入不需要）
     0,  // 對方實付（收入不需要）
     safeCategory,
-    safePaymentAccount,  // 付款帳戶
-    safeProject,  // 專案
+    '',  // 付款帳戶（簡化版不使用）
+    '',  // 專案（簡化版不使用）
     false,  // 是否週期
     '',  // 週期日期
     id,
@@ -812,6 +774,35 @@ function getAppSettings() {
       mode: '共同記帳',
       theme: '紫色'
     };
+  }
+}
+
+/**
+ * 更新應用程式設定
+ */
+function setAppSettings(mode, theme) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
+
+    if (!settingsSheet) {
+      throw new Error('設定工作表不存在');
+    }
+
+    // 更新記帳模式（B7）
+    if (mode) {
+      settingsSheet.getRange('B7').setValue(mode);
+    }
+
+    // 更新介面配色（B8）
+    if (theme) {
+      settingsSheet.getRange('B8').setValue(theme);
+    }
+
+    return { success: true };
+  } catch (e) {
+    Logger.log('更新應用程式設定失敗: ' + e.toString());
+    throw new Error('更新設定失敗：' + e.toString());
   }
 }
 
@@ -1205,12 +1196,8 @@ function addIncomeFromWeb(incomeData) {
     incomeData.item,
     incomeData.amount,
     incomeData.category,
-    incomeData.paymentAccount || '',
-    incomeData.project || '',
     incomeData.incomeDate || null,
-    incomeData.incomeTime || null,
-    incomeData.currency || null,
-    incomeData.originalAmount || null
+    incomeData.incomeTime || null
   );
 }
 
@@ -2476,7 +2463,7 @@ function importSettleUpCSV() {
       // 排除標題列
       if (name === 'Who paid' || name === 'For whom') return false;
 
-      // 排除包含分號的多人選項（例如：「佩樺;零幻」）
+      // 排除包含分號的多人選項（例如：「小明;小華」）
       if (name.includes(';')) return false;
 
       // 排除包含特殊字符的項目（商品名、商家名等）

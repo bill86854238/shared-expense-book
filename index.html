@@ -1005,7 +1005,7 @@
         font-size: 0.95em;
       }
 
-      /* 支出記錄 */
+      /* 記錄列表 */
       .expense-item {
         flex-direction: column;
         align-items: stretch;
@@ -1232,7 +1232,8 @@
       <h2 style="margin-bottom: 15px;" id="formTitle">💰 新增支出</h2>
 
       <!-- 快速記账按钮 -->
-      <div style="margin-bottom: 20px;">
+      <!-- 快速記帳按鈕（僅支出模式顯示） -->
+      <div class="expense-only" style="margin-bottom: 20px;">
         <div style="font-size: 0.9em; color: #666; margin-bottom: 8px; font-weight: 500;">⚡ 快速記帳</div>
         <div id="quickExpenseButtons" style="display: flex; flex-wrap: wrap; gap: 8px;">
           <!-- 按鈕將從試算表動態載入 -->
@@ -1258,7 +1259,7 @@
         <input type="number" id="amount" placeholder="0">
       </div>
 
-      <div class="form-group payer-field expense-only">
+      <div class="form-group payer-field expense-only shared-only">
         <label>誰付錢</label>
         <select id="actualPayer" onchange="updatePaymentMethod()">
           <option value="you">我</option>
@@ -1269,7 +1270,7 @@
       </div>
 
       <!-- 不等額墊付的金額輸入 -->
-      <div class="form-group payer-field expense-only hidden" id="unequalPaymentFields">
+      <div class="form-group payer-field expense-only shared-only hidden" id="unequalPaymentFields">
         <label>實際付款金額</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
@@ -1286,7 +1287,7 @@
         </div>
       </div>
 
-      <div class="form-group split-field expense-only">
+      <div class="form-group split-field expense-only shared-only">
         <label>幫誰付款（可複選）</label>
         <div style="display: flex; gap: 20px; align-items: center;">
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
@@ -1300,7 +1301,7 @@
         </div>
       </div>
 
-      <div class="form-group split-field expense-only hidden" id="splitMethodGroup">
+      <div class="form-group split-field expense-only shared-only hidden" id="splitMethodGroup">
         <label>分帳方式</label>
         <div style="display: flex; gap: 10px; margin-bottom: 10px;">
           <button type="button" id="autoSplitBtn" class="split-method-btn active" onclick="setSplitMethod('auto')">自動均分</button>
@@ -1309,7 +1310,7 @@
         </div>
       </div>
 
-      <div class="form-group split-field expense-only hidden" id="amountSplitGroup">
+      <div class="form-group split-field expense-only shared-only hidden" id="amountSplitGroup">
         <label>自訂分帳金額</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
@@ -1324,7 +1325,7 @@
         </div>
       </div>
 
-      <div class="form-group split-field expense-only hidden" id="ratioSplitGroup">
+      <div class="form-group split-field expense-only shared-only hidden" id="ratioSplitGroup">
         <label>自訂分帳比例</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
@@ -1339,7 +1340,8 @@
         </div>
       </div>
 
-      <div class="form-group">
+      <!-- 支出分類（支出模式顯示） -->
+      <div class="form-group expense-only">
         <label>分類</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <select id="mainCategory" onchange="updateSubCategories()">
@@ -1351,15 +1353,20 @@
         </div>
       </div>
 
-      <!-- 收入專用欄位 -->
+      <!-- 收入分類（收入模式顯示） -->
       <div class="form-group income-only" style="display: none;">
-        <label>付款帳戶（選填）</label>
-        <input type="text" id="paymentAccount" placeholder="例如：玉山銀行、LINE Pay">
-      </div>
-
-      <div class="form-group income-only" style="display: none;">
-        <label>專案（選填）</label>
-        <input type="text" id="project" placeholder="例如：副業、租金">
+        <label>收入分類</label>
+        <select id="incomeCategory">
+          <option value="薪水">💼 薪水</option>
+          <option value="獎金">🎁 獎金</option>
+          <option value="投資收益">📈 投資收益</option>
+          <option value="副業收入">💰 副業收入</option>
+          <option value="利息">🏦 利息</option>
+          <option value="租金">🏠 租金</option>
+          <option value="贈與">🎉 贈與</option>
+          <option value="退款">↩️ 退款</option>
+          <option value="其他">📦 其他</option>
+        </select>
       </div>
 
       <!-- 週期支出設定 -->
@@ -1478,7 +1485,7 @@
     </div>
 
     <div class="filter-section">
-      <h2 style="margin-bottom: 15px;">📋 支出記錄</h2>
+      <h2 style="margin-bottom: 15px;">📋 記錄</h2>
 
       <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 200px;">
@@ -1906,6 +1913,16 @@
         applyTheme(savedTheme);
         applyMode(savedMode);
         console.log('使用 localStorage 設定:', appSettings);
+
+        // 同步到後端 Sheets，確保前後端一致
+        google.script.run
+          .withSuccessHandler(function() {
+            console.log('已同步模式到後端:', savedMode);
+          })
+          .withFailureHandler(function(error) {
+            console.error('同步模式到後端失敗:', error);
+          })
+          .setAppSettings(savedMode, savedTheme);
       } else {
         // 第一次使用，從試算表讀取預設值
         google.script.run
@@ -1966,10 +1983,10 @@
         titleEl.innerHTML = '<span>' + icon + ' ' + text + '</span><span style="font-size: 0.5em; opacity: 0.6;">▼</span>';
       }
 
-      // 個人模式隱藏付款人和分帳欄位
-      const payerFields = document.querySelectorAll('.payer-field, .split-field');
-      payerFields.forEach(field => {
-        field.style.display = isPersonalMode ? 'none' : 'block';
+      // 個人模式隱藏共同記帳專用欄位（付款人和分帳）
+      const sharedOnlyFields = document.querySelectorAll('.shared-only');
+      sharedOnlyFields.forEach(field => {
+        field.style.display = isPersonalMode ? 'none' : '';
       });
 
       // 個人模式隱藏結算相關元素
@@ -1984,12 +2001,11 @@
         recordTypeToggle.style.display = isPersonalMode ? 'block' : 'none';
       }
 
-      // 個人模式時，自動設定付款人為「你」，分帳為100%/0%
+      // 個人模式時，自動設定付款人為「你」，分帳為100%/0%（後端會自動處理）
       if (isPersonalMode) {
-        const payerRadios = document.querySelectorAll('input[name="payer"]');
-        payerRadios.forEach(radio => {
-          if (radio.value === '你') radio.checked = true;
-        });
+        document.getElementById('actualPayer').value = 'you';
+        document.getElementById('payForYou').checked = true;
+        document.getElementById('payForPartner').checked = false;
       }
     }
 
@@ -2014,6 +2030,16 @@
       // 儲存到 localStorage
       localStorage.setItem('accountingMode', mode);
       appSettings.mode = mode;
+
+      // 同步更新後端設定（Google Sheets）
+      google.script.run
+        .withSuccessHandler(function() {
+          console.log('後端設定已同步');
+        })
+        .withFailureHandler(function(error) {
+          console.error('同步後端設定失敗：', error);
+        })
+        .setAppSettings(mode, null);
 
       // 套用新模式
       applyMode(mode);
@@ -2978,16 +3004,34 @@
         daysCount = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
       }
 
-      // 計算統計數據
-      const total = periodExpenses.reduce(function(sum, exp) {
-        return sum + Number(exp.amount);
-      }, 0);
+      // 計算統計數據（個人記帳模式需分開統計收入和支出）
+      const isPersonalMode = appSettings.mode === '個人記帳';
+      let totalExpense = 0;
+      let totalIncome = 0;
+      let expenseCount = 0;
+      let incomeCount = 0;
+
+      periodExpenses.forEach(function(exp) {
+        const amount = Number(exp.amount);
+        if (exp.recordType === 'income') {
+          totalIncome += amount;
+          incomeCount++;
+        } else {
+          totalExpense += amount;
+          expenseCount++;
+        }
+      });
+
+      const total = isPersonalMode ? totalExpense : (totalExpense + totalIncome);
       const count = periodExpenses.length;
       const dailyAvg = daysCount > 0 ? total / daysCount : 0;
 
-      // 計算分類統計
+      // 計算分類統計（個人記帳模式只統計支出的分類）
       const categoryStats = {};
       periodExpenses.forEach(function(exp) {
+        // 個人記帳模式跳過收入
+        if (isPersonalMode && exp.recordType === 'income') return;
+
         if (!categoryStats[exp.category]) {
           categoryStats[exp.category] = 0;
         }
@@ -3019,12 +3063,25 @@
       // 更新第一張卡片
       document.getElementById('dashboardIcon1').textContent = icon;
       document.getElementById('dashboardTitle1').textContent = periodName + '概況';
-      document.getElementById('label1').textContent = '總支出';
-      document.getElementById('value1').textContent = formatMoney(total);
-      document.getElementById('label2').textContent = '記錄數';
-      document.getElementById('value2').textContent = count + ' 筆';
-      document.getElementById('label3').textContent = '分類占比';
-      document.getElementById('value3').innerHTML = categoryText;
+
+      // 個人記帳模式顯示收入和支出分開統計
+      if (isPersonalMode) {
+        const netIncome = totalIncome - totalExpense;
+        document.getElementById('label1').textContent = '總收入';
+        document.getElementById('value1').textContent = formatMoney(totalIncome);
+        document.getElementById('label2').textContent = '總支出';
+        document.getElementById('value2').textContent = formatMoney(totalExpense);
+        document.getElementById('label3').textContent = '淨收入';
+        document.getElementById('value3').innerHTML = '<span style="color: ' + (netIncome >= 0 ? '#4caf50' : '#f44336') + '; font-weight: 600;">' + formatMoney(netIncome) + '</span>';
+      } else {
+        // 共同記帳模式顯示原本的統計
+        document.getElementById('label1').textContent = '總支出';
+        document.getElementById('value1').textContent = formatMoney(total);
+        document.getElementById('label2').textContent = '記錄數';
+        document.getElementById('value2').textContent = count + ' 筆';
+        document.getElementById('label3').textContent = '分類占比';
+        document.getElementById('value3').innerHTML = categoryText;
+      }
 
       let topCategory = '飲食';
       let maxCategoryAmount = 0;
@@ -3066,12 +3123,24 @@
         const label4 = document.getElementById('label4');
         const label5 = document.getElementById('label5');
         const label6 = document.getElementById('label6');
-        if (label4) document.getElementById('label4').textContent = '總支出';
-        if (label4) document.getElementById('value4').textContent = formatMoney(total);
-        if (label5) document.getElementById('label5').textContent = '日均支出';
-        if (label5) document.getElementById('value5').textContent = formatMoney(Math.round(dailyAvg));
-        if (label6) document.getElementById('label6').textContent = '記帳次數';
-        if (label6) document.getElementById('value6').textContent = count + ' 筆';
+
+        // 個人記帳模式顯示收入支出次數
+        if (isPersonalMode) {
+          if (label4) document.getElementById('label4').textContent = '收入次數';
+          if (label4) document.getElementById('value4').textContent = incomeCount + ' 筆';
+          if (label5) document.getElementById('label5').textContent = '支出次數';
+          if (label5) document.getElementById('value5').textContent = expenseCount + ' 筆';
+          if (label6) document.getElementById('label6').textContent = '總記錄數';
+          if (label6) document.getElementById('value6').textContent = (incomeCount + expenseCount) + ' 筆';
+        } else {
+          // 共同記帳模式顯示原本的統計
+          if (label4) document.getElementById('label4').textContent = '總支出';
+          if (label4) document.getElementById('value4').textContent = formatMoney(total);
+          if (label5) document.getElementById('label5').textContent = '日均支出';
+          if (label5) document.getElementById('value5').textContent = formatMoney(Math.round(dailyAvg));
+          if (label6) document.getElementById('label6').textContent = '記帳次數';
+          if (label6) document.getElementById('value6').textContent = count + ' 筆';
+        }
       }
     }
 
@@ -3220,14 +3289,31 @@
       // 自動填入表單
       document.getElementById('item').value = item;
       document.getElementById('amount').value = amount;
-      document.getElementById('category').value = category;
+
+      // 處理分類（支援主分類和子分類，如「飲食>早餐」）
+      if (category && category.includes('>')) {
+        const parts = category.split('>');
+        document.getElementById('mainCategory').value = parts[0].trim();
+        // 更新子分類選項後再設定值
+        updateSubCategories();
+        setTimeout(() => {
+          const subCategorySelect = document.getElementById('subCategory');
+          if (subCategorySelect && parts[1]) {
+            subCategorySelect.value = parts[1].trim();
+          }
+        }, 100);
+      } else if (category) {
+        // 只有主分類
+        document.getElementById('mainCategory').value = category;
+        updateSubCategories();
+      }
 
       // 滾動到金額輸入框
       document.getElementById('amount').focus();
       document.getElementById('amount').select();
 
       // 顯示提示
-      showToast('已填入「' + item + ' $' + amount + '」，可修改金額後送出', 'success');
+      showToast('✅ 已填入「' + item + ' $' + amount + '」' + (category ? '（' + category + '）' : ''), 'success');
     }
 
     /**
@@ -3286,11 +3372,7 @@
     function addIncome() {
       const item = document.getElementById('item').value.trim();
       const amount = parseFloat(document.getElementById('amount').value);
-      const mainCategory = document.getElementById('mainCategory').value;
-      const subCategory = document.getElementById('subCategory').value;
-      const category = subCategory ? (mainCategory + '>' + subCategory) : mainCategory;
-      const paymentAccount = document.getElementById('paymentAccount').value.trim();
-      const project = document.getElementById('project').value.trim();
+      const category = document.getElementById('incomeCategory').value || '其他';
       const incomeDate = document.getElementById('expenseDate').value;
       const incomeTime = document.getElementById('expenseTime').value;
 
@@ -3308,9 +3390,7 @@
       const incomeData = {
         item: item,
         amount: amount,
-        category: category || '收入',
-        paymentAccount: paymentAccount,
-        project: project,
+        category: category,
         incomeDate: incomeDate,
         incomeTime: incomeTime
       };
@@ -3327,8 +3407,6 @@
           // 清空表單
           document.getElementById('item').value = '';
           document.getElementById('amount').value = '';
-          document.getElementById('paymentAccount').value = '';
-          document.getElementById('project').value = '';
 
           // 重新載入資料
           refreshData();
