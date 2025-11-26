@@ -1385,6 +1385,14 @@
         </small>
       </div>
 
+      <!-- 新增付款帳戶選擇欄位 -->
+      <div class="form-group expense-only">
+        <label>付款帳戶（選填）</label>
+        <select id="paymentAccount" style="width: 100%;">
+          <option value="">-- 選擇付款方式 --</option>
+        </select>
+      </div>
+
       <div style="display: flex; gap: 10px;">
         <button id="submitBtn" class="btn btn-primary" onclick="submitRecord()" style="flex: 1;">新增支出</button>
         <button class="btn settlement-section" onclick="openSettlementModal()" style="flex: 1; background: #10b981; color: white;">💰 記錄結算</button>
@@ -1670,6 +1678,11 @@
               <option value="">（選填子分類）</option>
             </select>
           </div>
+        </div>
+
+        <div class="form-group">
+          <label>付款帳戶（選填）</label>
+          <select id="editPaymentAccount" style="width: 100%;"></select>
         </div>
 
         <input type="hidden" id="editExpenseId">
@@ -2370,12 +2383,48 @@
       // 載入分類列表
       loadCategories();
 
+      // 載入付款帳戶
+      loadPaymentAccounts();
+
       document.getElementById('searchInput').addEventListener('input', function() {
         applyFilters();
       });
       document.getElementById('filterCategory').addEventListener('change', applyFilters);
       document.getElementById('filterPayer').addEventListener('change', applyFilters);
+
+      // 新增不等額墊付欄位的事件監聽
+      const yourActualPaid = document.getElementById('yourActualPaid');
+      const partnerActualPaid = document.getElementById('partnerActualPaid');
+      if (yourActualPaid) {
+        yourActualPaid.addEventListener('input', updateUnequalPaymentHint);
+      }
+      if (partnerActualPaid) {
+        partnerActualPaid.addEventListener('input', updateUnequalPaymentHint);
+      }
+      document.getElementById('amount').addEventListener('input', updateUnequalPaymentHint);
     });
+    
+    /**
+     * 載入付款帳戶
+     */
+    function loadPaymentAccounts() {
+      google.script.run
+        .withSuccessHandler(function(accounts) {
+          const select = document.getElementById('paymentAccount');
+          select.innerHTML = '<option value="">-- 選擇付款方式 --</option>';
+          
+          accounts.forEach(function(account) {
+            const option = document.createElement('option');
+            option.value = account.name;
+            option.textContent = account.emoji + ' ' + account.name;
+            select.appendChild(option);
+          });
+        })
+        .withFailureHandler(function(error) {
+          console.error('載入付款帳戶失敗:', error);
+        })
+        .getPaymentAccounts();
+    }
 
     function updateUI(expenses) {
       let yourShouldPay = 0;    // 你應該負擔的總金額
@@ -2594,6 +2643,7 @@
           const safeItem = escapeHtml(exp.item);
           const safeCategory = escapeHtml(exp.category);
           const safePayer = escapeHtml(exp.payer);
+          const safePaymentAccount = exp.paymentAccount ? ' · 💳 ' + escapeHtml(exp.paymentAccount) : '';
 
           // 提取時間部分（如果日期包含時間）
           const timeStr = exp.date.includes(':') ? exp.date.split(' ')[1].substring(0, 5) : '';
@@ -2603,7 +2653,7 @@
             '<div class="expense-info">' +
               '<strong>' + icon + ' ' + safeItem + '</strong>' +
               '<div style="font-size: 0.82em; color: #6b7280; margin-top: 2px;">' +
-                safeCategory + ' · ' + safePayer + timeDisplay +
+                safeCategory + ' · ' + safePayer + safePaymentAccount + timeDisplay +
                 splitInfo +
               '</div>' +
             '</div>' +
@@ -2729,6 +2779,12 @@
         document.getElementById('editCustomSplit').classList.add('hidden');
       }
 
+      // 填入付款帳戶
+      const editPaymentAccountSelect = document.getElementById('editPaymentAccount');
+      const mainPaymentAccountSelect = document.getElementById('paymentAccount');
+      editPaymentAccountSelect.innerHTML = mainPaymentAccountSelect.innerHTML; // 複製選項
+      editPaymentAccountSelect.value = expense.paymentAccount || ''; // 設定當前值
+
       // 開啟 Modal
       document.getElementById('editExpenseModal').classList.remove('hidden');
     }
@@ -2796,6 +2852,7 @@
       const amount = parseFloat(document.getElementById('editAmount').value);
       const splitType = document.getElementById('editSplitType').value;
       const payer = document.getElementById('editPayer').value;
+      const paymentAccount = document.getElementById('editPaymentAccount').value; // 讀取付款帳戶
 
       // 組合主分類和子分類
       const mainCategory = document.getElementById('editMainCategory').value;
@@ -2848,7 +2905,7 @@
         yourPart: yourPart,
         partnerPart: partnerPart,
         category: category,
-        date: expenseDate + ' ' + expenseTime  // 組合日期和時間
+        paymentAccount: paymentAccount // 新增付款帳戶到要更新的資料中
       };
 
       google.script.run
@@ -3074,7 +3131,7 @@
         document.getElementById('label3').textContent = '淨收入';
         document.getElementById('value3').innerHTML = '<span style="color: ' + (netIncome >= 0 ? '#4caf50' : '#f44336') + '; font-weight: 600;">' + formatMoney(netIncome) + '</span>';
       } else {
-        // 共同記帳模式顯示原本的統計
+        // 共同記帳模式：顯示原本的統計
         document.getElementById('label1').textContent = '總支出';
         document.getElementById('value1').textContent = formatMoney(total);
         document.getElementById('label2').textContent = '記錄數';
@@ -3156,7 +3213,7 @@
       });
 
       // 上月數據
-      const lastMonth = new Date(currentYear, currentMonth - 1, 1);
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastMonthExpenses = expenses.filter(function(exp) {
         const expDate = new Date(exp.date);
         return expDate.getMonth() === lastMonth.getMonth() && expDate.getFullYear() === lastMonth.getFullYear();
@@ -3208,15 +3265,6 @@
         currentCategoryStats[exp.category] += Number(exp.amount);
       });
 
-      const categoryIcons = {
-        '飲食': '🍜',
-        '居住': '🏠',
-        '交通': '🚗',
-        '娛樂': '🎮',
-        '服飾': '👔',
-        '其他': '📦'
-      };
-
       let categoryText = '';
       if (currentTotal > 0) {
         const sortedCategories = Object.entries(currentCategoryStats).sort((a, b) => b[1] - a[1]);
@@ -3230,7 +3278,7 @@
       }
 
       // 更新第一張卡片（本月）
-      document.getElementById('dashboardIcon1').textContent = '📅';
+      document.getElementById('dashboardIcon1').textContent = icon;
       document.getElementById('dashboardTitle1').textContent = '本月數據';
       document.getElementById('label1').textContent = '總支出';
       document.getElementById('value1').innerHTML = formatMoney(currentTotal) + getTrendHTML(totalChange);
@@ -3450,6 +3498,9 @@
         return;
       }
 
+      // 新增：取得付款帳戶
+      const paymentAccount = document.getElementById('paymentAccount').value || '';
+
       // 取得誰付錢和實際付款金額
       const actualPayerValue = document.getElementById('actualPayer').value;
       let actualPayer = '';
@@ -3521,7 +3572,7 @@
           }
 
           if (Math.abs(yourPartAmount + partnerPartAmount - amount) > 0.01) {
-            showToast('分帳金額總和必須等於總金額 $' + amount, 'error');
+            showToast('分帳金額總和必須等於總金額', 'error');
             return;
           }
 
@@ -3605,27 +3656,22 @@
         item: item,
         amount: amount,
         payer: displayPayer,
-        actualPayer: actualPayer,  // 誰先付錢
-        yourPart: yourPart,  // 你應該負擔的金額
-        partnerPart: partnerPart,  // 對方應該負擔的金額
-        yourActualPaid: yourActualPaidAmount,  // 你實際付出的金額
-        partnerActualPaid: partnerActualPaidAmount,  // 對方實際付出的金額
+        actualPayer: actualPayerValue,
+        yourPart: yourPart,
+        partnerPart: partnerPart,
         category: category,
         isRecurring: isRecurring,
         recurringDay: recurringDay,
-        expenseDate: expenseDate,  // 支出日期
-        expenseTime: expenseTime   // 支出時間
+        yourActualPaid: yourActualPaidAmount,
+        partnerActualPaid: partnerActualPaidAmount,
+        expenseDate: expenseDate,
+        expenseTime: expenseTime,
+        paymentAccount: paymentAccount
       };
 
-      // 按鈕 Loading 狀態
-      const btn = document.querySelector('.btn-primary');
-      btn.disabled = true;
-      btn.classList.add('btn-loading');
-
       google.script.run
-        .withSuccessHandler(function() {
-          showToast('新增成功！ 🎉', 'success');
-
+        .withSuccessHandler(function(id) {
+          showToast('✅ 記錄已新增！', 'success');
           // 清空表單
           document.getElementById('item').value = '';
           document.getElementById('amount').value = '';
@@ -3655,16 +3701,27 @@
           document.getElementById('expenseDate').value = dateStr;
           document.getElementById('expenseTime').value = timeStr;
 
-          btn.disabled = false;
-          btn.classList.remove('btn-loading');
           loadData();
         })
         .withFailureHandler(function(error) {
           showError(error);
-          btn.disabled = false;
-          btn.classList.remove('btn-loading');
         })
-        .addExpenseFromWeb(expenseData);
+        .addExpense(
+          expenseData.item,
+          expenseData.amount,
+          expenseData.payer,
+          expenseData.actualPayer,
+          expenseData.yourPart,
+          expenseData.partnerPart,
+          expenseData.category,
+          expenseData.isRecurring,
+          expenseData.recurringDay,
+          expenseData.yourActualPaid,
+          expenseData.partnerActualPaid,
+          expenseData.expenseDate,
+          expenseData.expenseTime,
+          expenseData.paymentAccount  // ← 傳送付款帳戶
+        );
     }
 
     function updatePaymentMethod() {
@@ -3700,7 +3757,7 @@
       if (!payForYou && !payForPartner) {
         showToast('請至少勾選一個成員', 'error');
         document.getElementById('payForYou').checked = true;
-        updatePaymentMethod(); // 重新觸發
+        updatePaymentMethod(); // 重新觸发
       }
     }
 

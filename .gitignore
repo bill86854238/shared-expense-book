@@ -24,6 +24,7 @@ UI優化說明.md
 資安說明.md
 
 # 付費產品專屬檔案（不要 commit 到 GitHub）
+premium/
 部署助手.html
 setup-helper.html
 setup-generator.html
