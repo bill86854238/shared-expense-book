@@ -22,3 +22,31 @@ UI優化說明.md
 測試清單.md
 新功能說明.md
 資安說明.md
+
+# 付費產品專屬檔案（不要 commit 到 GitHub）
+premium/
+部署助手.html
+setup-helper.html
+setup-generator.html
+product-package-zh/
+product-package-en/
+product-package-ja/
+gumroad-sales-copy.md
+方格子推廣文-銷售版.md
+GUMROAD-截圖清單.md
+上架準備總結.md
+PRODUCT-PACKAGE-README.txt
+
+# 臨時工作檔案
+*.py
+*.sed
+*.ps1
+archive/
+*-temp.html
+*-backup.html
+*-translated.html
+promotion-article-*.md
+工作記錄-*.md
+截圖指南.md
+部署指南-*.md
+Gumroad*.md

@@ -10,7 +10,8 @@ const CONFIG = {
     EXPENSES: '支出記錄',
     RECURRING: '週期設定',
     SETTINGS: '設定',
-    CATEGORIES: '分類設定'
+    CATEGORIES: '分類設定',
+    PAYMENT_ACCOUNTS: '付款帳戶'
   },
   COLORS: {
     HEADER: '#8b5cf6',
@@ -53,9 +54,10 @@ function initializeSpreadsheet() {
   createRecurringSheet(ss);
   createSettingsSheet(ss);
   createCategoriesSheet(ss);
+  createPaymentAccountsSheet_(ss);
   setupTriggers();
 
-  ui.alert('✅ 初始化完成！\n\n已建立：\n1. 支出記錄\n2. 週期設定\n3. 設定\n4. 分類設定\n\n並設定每日自動執行週期事件。');
+  ui.alert('✅ 初始化完成！\n\n已建立：\n1. 支出記錄\n2. 週期設定\n3. 設定\n4. 分類設定\n5. 付款帳戶\n\n並設定每日自動執行週期事件。');
 }
 
 function createExpensesSheet(ss) {
@@ -378,7 +380,45 @@ function getCategoriesFromSettings() {
   }
 }
 
-function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid, expenseDate, expenseTime) {
+/**
+ * 取得付款帳戶列表（硬編碼預設值）
+ */
+function getPaymentAccounts() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.PAYMENT_ACCOUNTS);
+    if (!sheet) {
+      // 如果工作表不存在，返回一個預設或空列表
+      return [
+        { name: '現金', emoji: '💵' },
+        { name: '信用卡', emoji: '💳' }
+      ];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    // 至少需要標題和一行資料
+    if (data.length < 2) {
+      return [];
+    }
+
+    const accounts = [];
+    // 從第 2 行開始讀取（跳過標題）
+    for (let i = 1; i < data.length; i++) {
+      const name = String(data[i][0] || '').trim();
+      const emoji = String(data[i][1] || '').trim();
+      if (name) { // 確保名稱不是空的
+        accounts.push({ name: name, emoji: emoji });
+      }
+    }
+    return accounts;
+  } catch (e) {
+    Logger.log('讀取付款帳戶失敗: ' + e.toString());
+    // 發生錯誤時返回一個安全的預設值
+    return [{ name: '讀取帳戶失敗', emoji: '⚠️' }];
+  }
+}
+
+function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid, expenseDate, expenseTime, paymentAccount) {
   // 檢查頻率限制
   checkRateLimit('addExpense');
 
@@ -482,7 +522,7 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
     finalYourActualPaid,  // 你實際付出的金額
     finalPartnerActualPaid,  // 對方實際付出的金額
     safeCategory,
-    '',  // 付款帳戶（共同記帳不使用）
+    paymentAccount,  // 付款帳戶
     '',  // 專案（共同記帳不使用）
     isRecurring || false,
     recurringDay || '',
@@ -1224,6 +1264,8 @@ function updateExpenseById(updatedData) {
   const owner = ss.getOwner().getEmail();
   const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
   const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const paymentAccountCol = headers.indexOf('付款帳戶') + 1;
 
   // 只有管理員可以編輯記錄
   if (currentUser !== owner) {
@@ -1262,18 +1304,19 @@ function updateExpenseById(updatedData) {
       // 過濾和轉義輸入
       const safeItem = escapeHtml(updatedData.item.trim());
       const safeCategory = escapeHtml(updatedData.category);
+      const safePaymentAccount = escapeHtml(updatedData.paymentAccount || '');
 
-      // 更新資料（保留原有的日期、多幣別欄位和 ID）
+      // 更新資料
       sheet.getRange(i + 1, 2).setValue(safeItem);           // 項目
       sheet.getRange(i + 1, 3).setValue(updatedData.amount); // 金額(TWD)
-      // 第 4-6 欄是「原始金額」、「幣別」、「匯率」，編輯功能暫不更新
       sheet.getRange(i + 1, 7).setValue(updatedData.payer);  // 付款人
-      // 第 8 欄是「實際付款人」，編輯功能暫不更新
       sheet.getRange(i + 1, 9).setValue(updatedData.yourPart);     // 你的部分
       sheet.getRange(i + 1, 10).setValue(updatedData.partnerPart);  // 對方的部分
-      // 第 11, 12 欄是「你實付」、「對方實付」，編輯功能暫不更新
       sheet.getRange(i + 1, 13).setValue(safeCategory);       // 分類
-      // 第 14, 15 欄是「付款帳戶」、「專案」，編輯功能暫不更新
+      
+      if (paymentAccountCol > 0) {
+        sheet.getRange(i + 1, paymentAccountCol).setValue(safePaymentAccount); // 付款帳戶
+      }
 
       // 更新背景顏色（擴展到 19 欄）
       let color = CONFIG.COLORS.BOTH;
@@ -1831,11 +1874,11 @@ function upgradeToLatest() {
   const response = ui.alert(
     '🔄 升級到最新版本',
     '即將檢查並執行所有可用的升級項目：\n\n' +
-    '• v2.4 - 墊付功能（實際付款人欄位）\n' +
-    '• v2.5 - 快速記帳按鈕設定\n' +
-    '• v2.8 - 結算功能（記錄類型欄位）\n' +
-    '• v2.9 - 付款帳戶功能（付款帳戶欄位）\n' +
-    '• v3.0 - 多幣別與專案功能（原始金額、幣別、匯率、專案欄位）\n\n' +
+    '• 墊付功能\n' +
+    '• 快速記帳按鈕設定\n' +
+    '• 結算與個人記帳功能\n' +
+    '• 付款帳戶管理功能\n' +
+    '• 多幣別與專案功能\n\n' +
     '已完成的升級會自動跳過，不會重複執行。\n\n' +
     '確定要開始升級嗎？',
     ui.ButtonSet.YES_NO
@@ -1849,336 +1892,75 @@ function upgradeToLatest() {
   const upgrades = [];
   let hasUpgrade = false;
 
-  // === 檢查 v2.4：墊付功能 ===
-  const headers = expensesSheet.getRange(1, 1, 1, expensesSheet.getLastColumn()).getValues()[0];
-  const actualPayerIndex = headers.indexOf('實際付款人');
+  // 重新讀取 headers
+  let headers = expensesSheet.getRange(1, 1, 1, expensesSheet.getLastColumn()).getValues()[0];
 
-  if (actualPayerIndex === -1) {
-    // 需要升級 v2.4
+  // === 檢查 v2.4：墊付功能（你實付、對方實付） ===
+  if (headers.indexOf('你實付') === -1) {
     try {
-      // 執行升級：在第 5 欄（付款人後）插入新欄位
-      expensesSheet.insertColumnAfter(4);
-      expensesSheet.getRange(1, 5).setValue('實際付款人');
-      expensesSheet.getRange(1, 5)
-        .setBackground(CONFIG.COLORS.HEADER)
-        .setFontColor('#ffffff')
-        .setFontWeight('bold')
-        .setHorizontalAlignment('center');
-      expensesSheet.setColumnWidth(5, 100);
-
-      // 自動填入舊資料
-      const lastRow = expensesSheet.getLastRow();
-      if (lastRow > 1) {
-        const payerData = expensesSheet.getRange(2, 4, lastRow - 1, 1).getValues();
-        expensesSheet.getRange(2, 5, lastRow - 1, 1).setValues(payerData);
-      }
-
-      upgrades.push('✓ v2.4 墊付功能');
+      expensesSheet.insertColumnsAfter(headers.indexOf('對方的部分') + 1, 2);
+      expensesSheet.getRange(1, headers.indexOf('對方的部分') + 2).setValue('你實付');
+      expensesSheet.getRange(1, headers.indexOf('對方的部分') + 3).setValue('對方實付');
+      upgrades.push('✓ 墊付功能（你實付、對方實付）');
       hasUpgrade = true;
     } catch (e) {
-      upgrades.push('✗ v2.4 墊付功能失敗：' + e.toString());
+      upgrades.push('✗ 墊付功能失敗：' + e.toString());
     }
   } else {
-    upgrades.push('- v2.4 墊付功能（已安裝）');
+    upgrades.push('- 墊付功能（已安裝）');
   }
 
-  // === 檢查 v2.5：快速記帳設定 ===
-  const settingsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SETTINGS);
-  if (!settingsSheet) {
-    upgrades.push('✗ v2.5 快速記帳設定失敗：找不到設定工作表');
-  } else {
-    const cell8 = settingsSheet.getRange('A8').getValue();
-    if (cell8 !== '快速記帳按鈕設定') {
-      // 需要升級 v2.5
+  // === 檢查 付款帳戶、專案、記錄類型、記錄擁有者等欄位 ===
+  const requiredColumns = ['付款帳戶', '專案', '記錄類型', '記錄擁有者'];
+  headers = expensesSheet.getRange(1, 1, 1, expensesSheet.getLastColumn()).getValues()[0]; // 再次更新 headers
+
+  requiredColumns.forEach(colName => {
+    if (headers.indexOf(colName) === -1) {
       try {
-        const quickExpenseHeaders = ['表情符號', '項目', '金額', '分類'];
-        const quickExpenseData = [
-          ['🍳', '早餐', 50, '飲食'],
-          ['🍱', '午餐', 100, '飲食'],
-          ['🍽️', '晚餐', 150, '飲食'],
-          ['☕', '咖啡', 60, '飲食'],
-          ['🚇', '交通', 20, '交通'],
-          ['🅿️', '停車', 50, '交通'],
-          ['🍰', '點心', 80, '飲食'],
-          ['🧋', '飲料', 50, '飲食']
-        ];
-
-        settingsSheet.getRange(8, 1).setValue('快速記帳按鈕設定');
-        settingsSheet.getRange(8, 1).setFontWeight('bold').setFontSize(11);
-        settingsSheet.getRange(9, 1, 1, 4).setValues([quickExpenseHeaders]);
-        settingsSheet.getRange(9, 1, 1, 4)
-          .setBackground(CONFIG.COLORS.HEADER)
-          .setFontColor('#ffffff')
-          .setFontWeight('bold')
-          .setHorizontalAlignment('center');
-        settingsSheet.getRange(10, 1, quickExpenseData.length, 4).setValues(quickExpenseData);
-        settingsSheet.getRange(10, 1, quickExpenseData.length, 4).setHorizontalAlignment('center');
-        settingsSheet.setColumnWidth(1, 100);
-        settingsSheet.setColumnWidth(2, 120);
-        settingsSheet.setColumnWidth(3, 80);
-        settingsSheet.setColumnWidth(4, 100);
-        settingsSheet.getRange('A18').setValue('💡 提示：可以自由新增、修改或刪除快速記帳按鈕（最多 12 個）');
-        settingsSheet.getRange('A18').setFontSize(9).setFontColor('#999999');
-
-        upgrades.push('✓ v2.5 快速記帳設定');
+        expensesSheet.insertColumnAfter(expensesSheet.getLastColumn());
+        const newColIndex = expensesSheet.getLastColumn() + 1;
+        expensesSheet.getRange(1, newColIndex).setValue(colName);
+        upgrades.push(`✓ 新增欄位：${colName}`);
         hasUpgrade = true;
       } catch (e) {
-        upgrades.push('✗ v2.5 快速記帳設定失敗：' + e.toString());
+        upgrades.push(`✗ 新增欄位 ${colName} 失敗：${e.toString()}`);
       }
     } else {
-      upgrades.push('- v2.5 快速記帳設定（已安裝）');
+      upgrades.push(`- 欄位 ${colName}（已存在）`);
     }
-  }
-
-  // === 檢查 v2.8：結算功能（記錄類型欄位） ===
-  const recordTypeIndex = headers.indexOf('記錄類型');
-
-  if (recordTypeIndex === -1) {
-    // 需要升級 v2.8
+  });
+  
+  // === 檢查並建立 付款帳戶 工作表 ===
+  const paymentAccountsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.PAYMENT_ACCOUNTS);
+  if (!paymentAccountsSheet) {
     try {
-      // 在最後一欄新增「記錄類型」欄位
-      const lastCol = expensesSheet.getLastColumn();
-      expensesSheet.getRange(1, lastCol + 1).setValue('記錄類型');
-      expensesSheet.getRange(1, lastCol + 1)
-        .setBackground(CONFIG.COLORS.HEADER)
-        .setFontColor('#ffffff')
-        .setFontWeight('bold')
-        .setHorizontalAlignment('center');
-      expensesSheet.setColumnWidth(lastCol + 1, 100);
-
-      // 自動填入現有資料為 'expense'
-      const lastRow = expensesSheet.getLastRow();
-      if (lastRow > 1) {
-        const recordTypes = [];
-        for (let i = 0; i < lastRow - 1; i++) {
-          recordTypes.push(['expense']);
-        }
-        expensesSheet.getRange(2, lastCol + 1, lastRow - 1, 1).setValues(recordTypes);
-      }
-
-      upgrades.push('✓ v2.8 結算功能');
+      createPaymentAccountsSheet_(ss);
+      upgrades.push('✓ 付款帳戶管理功能');
       hasUpgrade = true;
     } catch (e) {
-      upgrades.push('✗ v2.8 結算功能失敗：' + e.toString());
+      upgrades.push('✗ 付款帳戶管理功能失敗：' + e.toString());
     }
   } else {
-    upgrades.push('- v2.8 結算功能（已安裝）');
+    upgrades.push('- 付款帳戶管理功能（已安裝）');
   }
 
-  // === 檢查 v2.9：付款帳戶功能（付款帳戶欄位） ===
-  const paymentAccountIndex = headers.indexOf('付款帳戶');
+  // 重新設定所有標頭樣式和欄寬
+  const finalHeaders = ['日期', '項目', '金額(TWD)', '原始金額', '幣別', '匯率', '付款人', '實際付款人', '你的部分', '對方的部分', '你實付', '對方實付', '分類', '付款帳戶', '專案', '是否週期', '週期日期', 'ID', '記錄類型', '記錄擁有者'];
+  const finalWidths = [100, 150, 100, 90, 60, 70, 100, 100, 100, 100, 100, 100, 80, 100, 100, 80, 80, 120, 100, 150];
 
-  if (paymentAccountIndex === -1) {
-    // 需要升級 v2.9
-    try {
-      // 在「分類」後面（第11欄）插入「付款帳戶」欄位
-      const categoryIndex = headers.indexOf('分類');
-      if (categoryIndex === -1) {
-        throw new Error('找不到「分類」欄位');
-      }
+  expensesSheet.getRange(1, 1, 1, finalHeaders.length).setValues([finalHeaders]);
+  expensesSheet.getRange(1, 1, 1, finalHeaders.length)
+    .setBackground(CONFIG.COLORS.HEADER)
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
 
-      expensesSheet.insertColumnAfter(categoryIndex + 1);
-      expensesSheet.getRange(1, categoryIndex + 2).setValue('付款帳戶');
-      expensesSheet.getRange(1, categoryIndex + 2)
-        .setBackground(CONFIG.COLORS.HEADER)
-        .setFontColor('#ffffff')
-        .setFontWeight('bold')
-        .setHorizontalAlignment('center');
-      expensesSheet.setColumnWidth(categoryIndex + 2, 100);
-
-      // 自動填入現有資料為空字串
-      const lastRow = expensesSheet.getLastRow();
-      if (lastRow > 1) {
-        const emptyValues = [];
-        for (let i = 0; i < lastRow - 1; i++) {
-          emptyValues.push(['']);
-        }
-        expensesSheet.getRange(2, categoryIndex + 2, lastRow - 1, 1).setValues(emptyValues);
-      }
-
-      upgrades.push('✓ v2.9 付款帳戶功能');
-      hasUpgrade = true;
-    } catch (e) {
-      upgrades.push('✗ v2.9 付款帳戶功能失敗：' + e.toString());
+  finalWidths.forEach((width, i) => {
+    if (i < expensesSheet.getMaxColumns()) {
+      expensesSheet.setColumnWidth(i + 1, width);
     }
-  } else {
-    upgrades.push('- v2.9 付款帳戶功能（已安裝）');
-  }
+  });
 
-  // === 檢查 v3.0：多幣別與專案功能 ===
-  // 重新讀取 headers 以確保包含所有已升級的欄位
-  const currentHeaders = expensesSheet.getRange(1, 1, 1, expensesSheet.getLastColumn()).getValues()[0];
-  const originalAmountIndex = currentHeaders.indexOf('原始金額');
-  const currencyIndex = currentHeaders.indexOf('幣別');
-  const exchangeRateIndex = currentHeaders.indexOf('匯率');
-  const projectIndex = currentHeaders.indexOf('專案');
-
-  let needsV30Upgrade = false;
-
-  if (originalAmountIndex === -1 || currencyIndex === -1 || exchangeRateIndex === -1) {
-    needsV30Upgrade = true;
-  }
-
-  if (needsV30Upgrade) {
-    try {
-      // 在「金額(TWD)」後面插入三個多幣別欄位
-      const amountIndex = currentHeaders.indexOf('金額(TWD)');
-      if (amountIndex === -1) {
-        throw new Error('找不到「金額(TWD)」欄位');
-      }
-
-      // 插入三個欄位：原始金額、幣別、匯率
-      expensesSheet.insertColumnsAfter(amountIndex + 1, 3);
-
-      // 設定標題
-      expensesSheet.getRange(1, amountIndex + 2).setValue('原始金額');
-      expensesSheet.getRange(1, amountIndex + 3).setValue('幣別');
-      expensesSheet.getRange(1, amountIndex + 4).setValue('匯率');
-
-      // 設定標題樣式
-      for (let i = 2; i <= 4; i++) {
-        expensesSheet.getRange(1, amountIndex + i)
-          .setBackground(CONFIG.COLORS.HEADER)
-          .setFontColor('#ffffff')
-          .setFontWeight('bold')
-          .setHorizontalAlignment('center');
-      }
-
-      // 設定欄位寬度
-      expensesSheet.setColumnWidth(amountIndex + 2, 100); // 原始金額
-      expensesSheet.setColumnWidth(amountIndex + 3, 80);  // 幣別
-      expensesSheet.setColumnWidth(amountIndex + 4, 80);  // 匯率
-
-      // 填入現有資料的預設值
-      const lastRow = expensesSheet.getLastRow();
-      if (lastRow > 1) {
-        // 讀取現有的 TWD 金額
-        const twdAmounts = expensesSheet.getRange(2, amountIndex + 1, lastRow - 1, 1).getValues();
-
-        // 準備要填入的資料
-        const defaultData = [];
-        for (let i = 0; i < twdAmounts.length; i++) {
-          defaultData.push([
-            twdAmounts[i][0], // 原始金額 = TWD 金額
-            'TWD',            // 幣別 = TWD
-            1                 // 匯率 = 1
-          ]);
-        }
-
-        expensesSheet.getRange(2, amountIndex + 2, lastRow - 1, 3).setValues(defaultData);
-      }
-
-      upgrades.push('✓ v3.0 多幣別功能（原始金額、幣別、匯率）');
-      hasUpgrade = true;
-    } catch (e) {
-      upgrades.push('✗ v3.0 多幣別功能失敗：' + e.toString());
-    }
-  } else {
-    upgrades.push('- v3.0 多幣別功能（已安裝）');
-  }
-
-  // 檢查專案欄位（需要在多幣別之後檢查，因為欄位位置可能改變）
-  const updatedHeaders = expensesSheet.getRange(1, 1, 1, expensesSheet.getLastColumn()).getValues()[0];
-  const updatedProjectIndex = updatedHeaders.indexOf('專案');
-
-  if (updatedProjectIndex === -1) {
-    try {
-      // 在「付款帳戶」後面插入「專案」欄位
-      const updatedPaymentAccountIndex = updatedHeaders.indexOf('付款帳戶');
-      if (updatedPaymentAccountIndex === -1) {
-        throw new Error('找不到「付款帳戶」欄位');
-      }
-
-      expensesSheet.insertColumnAfter(updatedPaymentAccountIndex + 1);
-      expensesSheet.getRange(1, updatedPaymentAccountIndex + 2).setValue('專案');
-      expensesSheet.getRange(1, updatedPaymentAccountIndex + 2)
-        .setBackground(CONFIG.COLORS.HEADER)
-        .setFontColor('#ffffff')
-        .setFontWeight('bold')
-        .setHorizontalAlignment('center');
-      expensesSheet.setColumnWidth(updatedPaymentAccountIndex + 2, 120);
-
-      // 填入空字串
-      const lastRow = expensesSheet.getLastRow();
-      if (lastRow > 1) {
-        const emptyValues = [];
-        for (let i = 0; i < lastRow - 1; i++) {
-          emptyValues.push(['']);
-        }
-        expensesSheet.getRange(2, updatedPaymentAccountIndex + 2, lastRow - 1, 1).setValues(emptyValues);
-      }
-
-      upgrades.push('✓ v3.0 專案功能');
-      hasUpgrade = true;
-    } catch (e) {
-      upgrades.push('✗ v3.0 專案功能失敗：' + e.toString());
-    }
-  } else {
-    upgrades.push('- v3.0 專案功能（已安裝）');
-  }
-
-  // 檢查並新增匯率參考表（在設定工作表）
-  if (settingsSheet) {
-    const rateTableTitle = settingsSheet.getRange(20, 1).getValue();
-    if (rateTableTitle !== '匯率參考表') {
-      try {
-        // 新增匯率參考表
-        settingsSheet.getRange(20, 1).setValue('匯率參考表');
-        settingsSheet.getRange(20, 1).setFontWeight('bold').setFontSize(11);
-
-        const exchangeRateHeaders = ['幣別代碼', '幣別名稱', '匯率(對TWD)', '更新日期'];
-
-        // 使用 GOOGLEFINANCE 公式自動更新匯率
-        const currencyPairs = [
-          ['JPY', '日幣', 'CURRENCY:JPYTWD'],
-          ['USD', '美金', 'CURRENCY:USDTWD'],
-          ['EUR', '歐元', 'CURRENCY:EURTWD'],
-          ['HKD', '港幣', 'CURRENCY:HKDTWD'],
-          ['CNY', '人民幣', 'CURRENCY:CNYTWD'],
-          ['KRW', '韓元', 'CURRENCY:KRWTWD'],
-          ['SGD', '新加坡幣', 'CURRENCY:SGDTWD'],
-          ['GBP', '英鎊', 'CURRENCY:GBPTWD'],
-          ['AUD', '澳幣', 'CURRENCY:AUDTWD'],
-          ['THB', '泰銖', 'CURRENCY:THBTWD']
-        ];
-
-        settingsSheet.getRange(21, 1, 1, 4).setValues([exchangeRateHeaders]);
-        settingsSheet.getRange(21, 1, 1, 4)
-          .setBackground(CONFIG.COLORS.HEADER)
-          .setFontColor('#ffffff')
-          .setFontWeight('bold')
-          .setHorizontalAlignment('center');
-
-        // 填入幣別代碼和名稱，匯率使用公式
-        for (let i = 0; i < currencyPairs.length; i++) {
-          const row = 22 + i;
-          settingsSheet.getRange(row, 1).setValue(currencyPairs[i][0]); // 幣別代碼
-          settingsSheet.getRange(row, 2).setValue(currencyPairs[i][1]); // 幣別名稱
-          settingsSheet.getRange(row, 3).setFormula(`=IFERROR(GOOGLEFINANCE("${currencyPairs[i][2]}"), "N/A")`); // 匯率公式
-          settingsSheet.getRange(row, 4).setFormula('=IF(ISNUMBER(C' + row + '), TEXT(NOW(), "yyyy/MM/dd HH:mm"), "")'); // 更新時間
-        }
-
-        settingsSheet.getRange(22, 1, currencyPairs.length, 4).setHorizontalAlignment('center');
-
-        // 設定欄位寬度
-        settingsSheet.setColumnWidth(1, 100); // 幣別代碼
-        settingsSheet.setColumnWidth(2, 120); // 幣別名稱
-        settingsSheet.setColumnWidth(3, 120); // 匯率
-        settingsSheet.setColumnWidth(4, 140); // 更新日期（加寬以容納時間）
-
-        // 加入說明
-        settingsSheet.getRange(32, 1).setValue('💡 提示：匯率使用 GOOGLEFINANCE 公式自動更新。若公式失效，可手動輸入數值。');
-        settingsSheet.getRange(32, 1).setFontSize(9).setFontColor('#999999');
-
-        upgrades.push('✓ v3.0 匯率參考表');
-        hasUpgrade = true;
-      } catch (e) {
-        upgrades.push('✗ v3.0 匯率參考表失敗：' + e.toString());
-      }
-    } else {
-      upgrades.push('- v3.0 匯率參考表（已安裝）');
-    }
-  }
 
   // 顯示結果
   const message = upgrades.join('\n');
@@ -2188,6 +1970,50 @@ function upgradeToLatest() {
     ui.alert('✅ 已是最新版本\n\n' + message + '\n\n無需升級。');
   }
 }
+
+/**
+ * 建立付款帳戶設定工作表
+ */
+function createPaymentAccountsSheet_(ss) {
+  let sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.PAYMENT_ACCOUNTS);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.SHEET_NAMES.PAYMENT_ACCOUNTS);
+
+    const headers = ['名稱', '圖示'];
+    const defaultAccounts = [
+      ['現金', '💵'],
+      ['信用卡', '💳'],
+      ['銀行轉帳', '🏦'],
+      ['悠遊卡', '🚌'],
+      ['LINE Pay', '🟩'],
+      ['街口支付', '🧡'],
+      ['台灣 Pay', '🇹🇼'],
+      ['Apple Pay', '🍎']
+    ];
+
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setBackground(CONFIG.COLORS.HEADER)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+
+    if (defaultAccounts.length > 0) {
+      sheet.getRange(2, 1, defaultAccounts.length, defaultAccounts[0].length).setValues(defaultAccounts);
+    }
+
+    sheet.setColumnWidth(1, 150); // 名稱
+    sheet.setColumnWidth(2, 80);  // 圖示
+
+    // 加入說明
+    const helpTextRow = defaultAccounts.length + 3;
+    sheet.getRange(helpTextRow, 1).setValue('💡 提示：在此工作表直接編輯您的付款帳戶，重新整理網頁後即可生效。');
+    sheet.getRange(helpTextRow, 1).setFontSize(9).setFontColor('#999999');
+
+    return true; // 表示已建立
+  }
+  return false; // 表示已存在
+}
+
 
 /**
  * 重置系統 - 清空所有資料（危險操作）
