@@ -57,7 +57,7 @@ function initializeSpreadsheet() {
   createPaymentAccountsSheet_(ss);
   setupTriggers();
 
-  ui.alert('✅ 初始化完成！\n\n已建立：\n1. 支出記錄\n2. 週期設定\n3. 設定\n4. 分類設定\n5. 付款帳戶\n\n並設定每日自動執行週期事件。');
+  ui.alert('✅ 初始化成功！\n\n系統已完成以下設定：\n1. 建立所有工作表並填入範例資料\n2. 自動授權當前使用者 (' + Session.getActiveUser().getEmail() + ')\n3. 設定每日自動執行週期事件\n\n現在請點擊「2️⃣ 第二步：開啟網頁版連結」來完成部署！');
 }
 
 function createExpensesSheet(ss) {
@@ -79,8 +79,16 @@ function createExpensesSheet(ss) {
     widths.forEach((width, i) => sheet.setColumnWidth(i + 1, width));
 
     sheet.setFrozenRows(1);
+
+    // 加入範例資料
+    const today = new Date();
+    const userEmail = Session.getActiveUser().getEmail();
+    const sampleData = [
+      [today, '範例：美味早餐', 100, 100, 'TWD', 1, '你', '你', 50, 50, 100, 0, '飲食', '現金', '', false, '', 'sample-1', '共同記帳', userEmail],
+      [today, '範例：超市採買', 500, 500, 'TWD', 1, '兩人', '你', 250, 250, 500, 0, '飲食', '信用卡', '', false, '', 'sample-2', '共同記帳', userEmail]
+    ];
+    sheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
   }
-  // 如果已存在，不做任何事（保護資料）
 }
 
 function createRecurringSheet(ss) {
@@ -108,7 +116,6 @@ function createRecurringSheet(ss) {
 
     sheet.getRange(2, 1, examples.length, examples[0].length).setValues(examples);
   }
-  // 如果已存在，不做任何事（保護資料）
 }
 
 function createSettingsSheet(ss) {
@@ -117,7 +124,7 @@ function createSettingsSheet(ss) {
     // 只有不存在時才建立新的
     sheet = ss.insertSheet(CONFIG.SHEET_NAMES.SETTINGS);
 
-    const owner = ss.getOwner().getEmail();
+    const currentUser = Session.getActiveUser().getEmail();
 
     const settings = [
       ['設定項目', '值'],
@@ -125,7 +132,7 @@ function createSettingsSheet(ss) {
       ['對方的名字', '對方'],
       ['預設分類', '飲食,居住,交通,娛樂,寵物,服飾,其他'],
       ['週期事件最後執行日期', ''],
-      ['允許存取的使用者', owner],
+      ['允許存取的使用者', currentUser],
       ['記帳模式', '共同記帳'],
       ['介面配色', '紫色']
     ];
@@ -736,29 +743,9 @@ function getCurrentUser() {
   const user = Session.getActiveUser().getEmail();
   const permission = checkUserPermission();
 
-  // 取得使用者照片和名稱
-  let photoUrl = '';
+  // 取得使用者照片和名稱 (移除 People API 以簡化部署)
+  let photoUrl = 'https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png';
   let displayName = user.split('@')[0]; // 預設使用 email 前綴
-
-  try {
-    // 使用 People API 取得使用者資訊
-    const userInfo = People.People.get('people/me', {
-      personFields: 'photos,names'
-    });
-
-    if (userInfo.photos && userInfo.photos.length > 0) {
-      photoUrl = userInfo.photos[0].url;
-    }
-
-    // 取得使用者的顯示名稱
-    if (userInfo.names && userInfo.names.length > 0) {
-      displayName = userInfo.names[0].displayName || user.split('@')[0];
-    }
-  } catch (e) {
-    Logger.log('無法取得使用者資訊: ' + e.toString());
-    // 使用預設 Google 帳號圖示
-    photoUrl = 'https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png';
-  }
 
   // 取得「對方的名字」設定
   let partnerName = '對方';
@@ -2169,27 +2156,46 @@ function resetSystem() {
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('📊 記帳系統')
-    .addItem('🚀 初始化系統（僅首次）', 'initializeSpreadsheet')
-    .addItem('📱 開啟網頁版', 'openWebApp')
+    .addItem('1️⃣ 第一步：初始化系統 (必點)', 'initializeSpreadsheet')
+    .addItem('2️⃣ 第二步：開啟網頁版連結', 'openWebApp')
     .addSeparator()
-    .addItem('🔄 升級到最新版本', 'upgradeToLatest')
+    .addItem('📱 進入網頁版', 'openWebApp')
+    .addItem('📈 查看快速統計', 'showStatistics')
     .addSeparator()
-    .addSubMenu(ui.createMenu('📥 匯入資料')
-      .addItem('💑 SettleUp (拆帳軟體)', 'importSettleUpCSV')
-      .addItem('💰 AndroMoney (記帳軟體)', 'importAndroMoneyCSV'))
-    .addSeparator()
-    .addItem('🔄 手動執行週期事件', 'manualExecuteRecurring')
-    .addItem('📈 查看統計資料', 'showStatistics')
-    .addSeparator()
-    .addItem('⚙️ 設定觸發器', 'setupTriggers')
-    .addItem('⚠️ 重置系統（危險）', 'resetSystem')
+    .addSubMenu(ui.createMenu('⚙️ 進階設定')
+      .addItem('🔄 升級資料結構', 'upgradeToLatest')
+      .addItem('📥 匯入 SettleUp 資料', 'importSettleUpCSV')
+      .addItem('📥 匯入 AndroMoney 資料', 'importAndroMoneyCSV')
+      .addItem('⏰ 手動設定觸發器', 'setupTriggers')
+      .addItem('🔄 手動執行週期事件', 'manualExecuteRecurring')
+      .addItem('⚠️ 重置系統 (危險)', 'resetSystem'))
     .addToUi();
 }
 
 function openWebApp() {
   const url = ScriptApp.getService().getUrl();
-  const safeUrl = escapeHtml(url);
 
+  // 檢查是否已部署
+  if (!url || url.indexOf('/dev') !== -1) {
+    const html = HtmlService.createHtmlOutput(
+      `<div style="font-family: sans-serif; line-height: 1.6;">
+        <p style="color: #d93025; font-weight: bold;">⚠️ 尚未完成部署</p>
+        <p>請按照以下步驟啟用網頁版：</p>
+        <ol>
+          <li>點擊右上角藍色按鈕<strong>「部署」</strong></li>
+          <li>選擇<strong>「新部署」</strong></li>
+          <li>類型選擇<strong>「網頁應用程式」</strong></li>
+          <li>將「具有存取權限的人」設為<strong>「所有人」</strong></li>
+          <li>點擊「部署」並完成授權</li>
+        </ol>
+        <p>部署成功後，再次點選此選單即可取得連結。</p>
+      </div>`
+    ).setWidth(450).setHeight(300);
+    SpreadsheetApp.getUi().showModalDialog(html, '🚀 部署導引');
+    return;
+  }
+
+  const safeUrl = escapeHtml(url);
   const html = HtmlService.createHtmlOutput(
     `<p>複製以下連結在瀏覽器開啟：</p>
      <input type="text" value="${safeUrl}" style="width:100%;padding:10px;" onclick="this.select()">

@@ -1,14 +1,5 @@
 {
   "timeZone": "Asia/Taipei",
-  "dependencies": {
-    "enabledAdvancedServices": [
-      {
-        "userSymbol": "People",
-        "version": "v1",
-        "serviceId": "peopleapi"
-      }
-    ]
-  },
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
   "webapp": {
