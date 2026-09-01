@@ -1,5 +1,7 @@
 # 💑 共同記帳系統 (Shared Expense Book)
 
+🌐 **語言 / Language / 言語**: [繁體中文](README.md) | [English](README.en.md) | [日本語](README.ja.md)
+
 > 基於 Google Apps Script 與 Google 試算表的私有化共同記帳解決方案。  
 > 具備 **$0 運行成本、永久無廣告、資料 100% 私有主權**，專為伴侶、室友、家庭與個人生活記帳打造。
 
@@ -7,12 +9,6 @@
 [![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-v8-blue.svg)](https://developers.google.com/apps-script)
 [![Version](https://img.shields.io/badge/Version-v2.60-blue.svg)](https://github.com/bill86854238/shared-expense-book/releases/tag/v2.60)
 [![Security](https://img.shields.io/badge/Security-5%20Stars-brightgreen.svg)]()
-
----
-
-## 📖 專屬實用手冊
-
-本專案附帶完整開源電子書：[《讓錢的事變簡單：Google 雲端共同記帳實用手冊》](./book/README.md)，包含詳細的情境圖解、外幣記帳、舊帳遷移與架構設計原理。
 
 ---
 
@@ -54,7 +50,7 @@
 
 > 💡 **小叮嚀**：本系統已全面優化核心架構，**無需手動啟用 Google People API 或設定觸發器**，開箱即可直接使用。
 
-如需更詳細的操作教學，可參考 [FAQ.md（常見問題）](./FAQ.md) 或閱讀 [專屬手冊第一章](./book/manuscript/01_導讀與快速開通.md)。
+如需更詳細的操作教學與排錯指引，可參考 [FAQ.md（常見問題）](./FAQ.md)。
 
 ---
 
