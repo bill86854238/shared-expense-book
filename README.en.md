@@ -80,3 +80,9 @@ For extra conveniences, an optional toolkit is available:
 ## 📝 License
 
 Distributed under the [MIT License](./LICENSE). Free for personal and commercial use.
+
+---
+
+## 🏷️ Keywords & Topics
+
+`expense-tracker` · `bill-splitter` · `shared-budget` · `couple-finances` · `roommate-expenses` · `household-budget` · `google-apps-script` · `google-sheets-template` · `self-hosted` · `serverless` · `pwa` · `personal-finance`
