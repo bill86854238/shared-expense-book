@@ -2,8 +2,8 @@
 
 🌐 **Language / 語言 / 言語**: [繁體中文](README.md) | [English](README.en.md) | [日本語](README.ja.md)
 
-> A private, self-hosted shared expense tracker built on Google Apps Script and Google Sheets.  
-> Features **$0 running cost, forever ad-free, and 100% data ownership**, crafted for couples, roommates, families, and personal budgeting.
+> A free, private, and self-hosted shared expense tracker built on Google Apps Script and Google Sheets.  
+> **$0 hosting costs, zero ads, and 100% data ownership.** Designed for couples, roommates, families, and personal budgeting.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-v8-blue.svg)](https://developers.google.com/apps-script)
@@ -14,52 +14,52 @@
 
 ## ✨ Key Features
 
-- 💰 **100% Free & No Ads**: Powered entirely by Google Workspace. No servers or external databases needed.
-- 🔒 **Complete Data Privacy**: Your data lives exclusively in your own Google Drive and is never sent to third-party servers.
-- 🎭 **Dual Mode (Personal & Shared)**:
-  - **Personal Mode**: Track income and expenses separately with automatic net balance calculation.
-  - **Shared Mode**: Flexible bill splitting (50/50, custom amounts, percentages, or full advance payments) with smart debt balance calculation.
-- ⚡ **1-Second Quick Log**: Customizable quick buttons (Breakfast, Coffee, Transport) for instant one-tap entry.
-- ✈️ **Travel & Foreign Currencies**: Real-time multi-currency conversion with dedicated project tags for vacation budgeting.
-- ⏰ **Recurring Auto-Expenses**: Schedule monthly recurring bills (Rent, Utilities, Subscriptions) automatically.
-- 🎨 **4 Elegant Color Themes**: Purple, Green, Coral, and Navy, with automatic preference saving.
-- 📥 **Seamless Data Import & Export**: Compatible with SettleUp and AndroMoney data; export full backups to Excel (.xlsx) / CSV anytime.
-- 🛡️ **Production-Grade Security**: Protection against XSS, CSRF/clickjacking, rate limiting, and Google OAuth whitelist authorization.
+- 💰 **100% Free & Ad-Free**: Runs entirely on your Google account. No subscriptions, server fees, or in-app ads.
+- 🔒 **Complete Data Privacy**: All records live securely in your own Google Drive. No third-party servers ever touch your finances.
+- 🎭 **Dual Mode (Personal vs. Shared)**:
+  - **Personal Mode**: Track income and personal spending separately, with automatic monthly net savings calculation.
+  - **Shared Mode**: Split bills evenly (50/50), by custom amounts, by percentages, or record 100% advance payments (reimbursements). Live balance calculation instantly shows who owes whom.
+- ⚡ **One-Tap Quick Logging**: Preset buttons for routine purchases (Breakfast, Coffee, Transit, Groceries) to log expenses in 1 second.
+- ✈️ **Travel & Foreign Currencies**: Real-time multi-currency exchange conversion with project tags for vacations.
+- ⏰ **Automated Recurring Expenses**: Automatically logs recurring monthly bills (Rent, Utilities, Subscriptions) on schedule.
+- 🎨 **4 Clean Themes**: Purple, Green, Coral, and Navy with persistent user preference memory.
+- 📥 **Easy Data Import & Export**: Import history from SettleUp or AndroMoney, and export full backups to Excel (.xlsx) / CSV anytime.
+- 🛡️ **Hardened Security**: Protected against XSS, clickjacking, and unauthorized access via Google OAuth email whitelist.
 
 ---
 
 ## 🎯 Use Cases
 
-- **Couples & Spouses**: Effortlessly split household bills, groceries, and dining expenses.
-- **Roommates**: Transparent shared rent, utility splitting, and hassle-free settlements.
-- **Family Budgets**: Centralized family spending management and recurring bills.
-- **Travel & Vacations**: Project-based travel expense tracking with multi-currency conversion.
+- **Couples & Spouses**: Transparent household budget sharing, groceries, and dining expenses.
+- **Roommates**: Clean rent & utility splitting with hassle-free monthly settlements.
+- **Family Budgets**: Centralized household finances and automated bill tracking.
+- **Vacation Budgets**: Project-based travel expense tracking with live currency conversion.
 - **Personal Finances**: Full monthly income, expenses, and savings monitoring.
 
 ---
 
 ## 🚀 Quick Start (Copy & Play)
 
-Deployment takes just **2 simple steps**:
+Get started in **just 2 steps**:
 
-1. **Make a Copy of the Template**:  
-   👉 [Click here to copy the Google Sheets template](https://docs.google.com/spreadsheets/d/1ZEXa0R0MGEMyG9W-Rh2t7bj1HCeM-gJ0chN7qqDw054/copy)
+1. **Copy the Template**:  
+   👉 [Click here to make a copy of the Google Sheets template](https://docs.google.com/spreadsheets/d/1ZEXa0R0MGEMyG9W-Rh2t7bj1HCeM-gJ0chN7qqDw054/copy)
 2. **Initialize & Deploy**:
-   - Open your copied sheet, click top menu **`📊 記帳系統 (Expense Book)` → `1️⃣ 第一步：初始化系統 (Initialize)`** (automatically creates tabs and schedules triggers).
+   - Open your copied sheet, click the top menu **`📊 記帳系統` → `1️⃣ 第一步：初始化系統`** (automatically creates tabs and schedules daily triggers).
    - Go to **`Extensions` → `Apps Script` → Click top-right `Deploy` → `New deployment`** (Select Web app, Execute as: Me, Who has access: Anyone), and copy the generated Web App URL to open on your phone!
 
-> 💡 **Note**: The core architecture has been streamlined—**no need to manually enable People API or configure triggers**. Ready to use out of the box.
+> 💡 **Note**: No need to manually enable People API or configure triggers. Everything is automated.
 
-For common troubleshooting, check [FAQ.md](./FAQ.md).
+For troubleshooting and common questions, see [FAQ.md](./FAQ.md).
 
 ---
 
-## 🎁 Deployment Toolkit (Premium Pack)
+## 🎁 Deployment Toolkit (Optional Premium Pack)
 
-For an enhanced experience, an optional toolkit is available:
+For extra conveniences, an optional toolkit is available:
 - **Profile Avatars**: Automatic Google avatar syncing (People API integration)
-- **Smart Generators**: Whitelist configuration helper
-- **Customization Guides**: In-depth color theme and category styling guide
+- **Smart Generators**: Email whitelist configuration generator
+- **Customization Guides**: Step-by-step color theme and category styling guide
 - **Dedicated Support**: 30 days of email technical assistance
 
 👉 [Support this project on Gumroad ($3 USD) →](https://billions65.gumroad.com/l/kwvhy)
@@ -69,7 +69,7 @@ For an enhanced experience, an optional toolkit is available:
 ## ❓ FAQ
 
 - **Q: Can other people see my financial data if they copy the template?**  
-  **A:** No. Each user creates an independent copy stored entirely in their own Google Drive.
+  **A:** No. Each user creates an independent copy stored entirely in their own private Google Drive.
 - **Q: How do I invite my partner or roommate?**  
   **A:** In the `設定 (Settings)` tab of your sheet, add their Gmail address in cell `B6`, then share your Web App URL with them.
 - **Q: Can I backup my data?**  
