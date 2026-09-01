@@ -1,6 +1,6 @@
-# 《讓錢的事變簡單：Google 雲端共同記帳實用手冊》
+# 《讓錢的事變簡單：Google 雲端共同記帳實用指南》
 
-歡迎閱讀本書。本專案提供一套基於 Google Workspace（Google 試算表 ＋ Google Apps Script）的私有共同記帳解決方案，具備 **$0 運行成本、永久無廣告、資料 100% 私有** 等特色。
+歡迎閱讀本書。本專案提供一套基於 Google Workspace（Google 試算表 ＋ Google Apps Script）的自託管共同記帳解決方案，具備 **$0 運行成本、永久無廣告、資料自主掌控** 等特色。
 
 ---
 

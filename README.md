@@ -2,8 +2,8 @@
 
 🌐 **語言 / Language / 言語**: [繁體中文](README.md) | [English](README.en.md) | [日本語](README.ja.md)
 
-> 基於 Google Apps Script 與 Google 試算表的私有化共同記帳解決方案。  
-> 具備 **$0 運行成本、永久無廣告、資料 100% 私有主權**，專為伴侶、室友、家庭與個人生活記帳打造。
+> 基於 Google Apps Script 與 Google 試算表的自託管共同記帳解決方案。  
+> 具備 **$0 運行成本、永久無廣告、資料由您完全自主掌控**，專為伴侶、室友、家庭與個人生活記帳打造。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-v8-blue.svg)](https://developers.google.com/apps-script)
@@ -15,7 +15,7 @@
 ## ✨ 核心特色
 
 - 💰 **永久免費與無廣告**：基於 Google Workspace 雲端生態系，無需租用伺服器或資料庫。
-- 🔒 **資料 100% 私有掌控**：所有帳目均保存在您個人的 Google 雲端硬碟，絕不上傳至任何第三方中繼主機。
+- 🔒 **資料自主掌控**：所有帳目直接存於您自己的 Google 帳號中，不經手任何開發者伺服器或第三方後台，杜絕資料被轉賣與廣告追蹤。
 - 🎭 **個人／共同雙模式無縫切換**：
   - **個人記帳**：收入與支出分軌統計，自動計算每月淨結餘。
   - **共同分帳**：支援平分、自訂金額、比例分配與代墊全額負擔，智慧結算誰該付錢。

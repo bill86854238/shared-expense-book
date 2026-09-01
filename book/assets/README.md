@@ -1,6 +1,6 @@
 # 書籍視覺資產與截圖清單 (Book Assets & Screenshots)
 
-本目錄（`book/assets/`）專門存放《Google 試算表共同記帳實用手冊》全書所需之視覺插圖、架構圖與介面截圖。
+本目錄（`book/assets/`）專門存放《Google 試算表共同記帳實用指南》全書所需之視覺插圖、架構圖與介面截圖。
 
 ---
 

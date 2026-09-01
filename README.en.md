@@ -15,7 +15,7 @@
 ## ✨ Key Features
 
 - 💰 **100% Free & Ad-Free**: Runs entirely on your Google account. No subscriptions, server fees, or in-app ads.
-- 🔒 **Complete Data Privacy**: All records live securely in your own Google Drive. No third-party servers ever touch your finances.
+- 🔒 **Complete Data Ownership**: Your financial records stay directly inside your own Google account. No developer databases, no third-party middlemen, and zero data tracking.
 - 🎭 **Dual Mode (Personal vs. Shared)**:
   - **Personal Mode**: Track income and personal spending separately, with automatic monthly net savings calculation.
   - **Shared Mode**: Split bills evenly (50/50), by custom amounts, by percentages, or record 100% advance payments (reimbursements). Live balance calculation instantly shows who owes whom.
