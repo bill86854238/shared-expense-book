@@ -1,0 +1,55 @@
+# 《讓錢的事變簡單：Google 雲端共同記帳實用手冊》
+
+歡迎閱讀本書。本專案提供一套基於 Google Workspace（Google 試算表 ＋ Google Apps Script）的私有共同記帳解決方案，具備 **$0 運行成本、永久無廣告、資料 100% 私有** 等特色。
+
+---
+
+## 📚 書籍目錄架構 (Table of Contents)
+
+### 第一部分：新手上手與生活實戰篇（一般讀者推薦）
+1. [01 導讀：打造專屬你的私有記帳本](./manuscript/01_introduction-and-setup.md)
+   * 為什麼需要私有記帳本？（零月費、無廣告、資料主權）
+   * 10 分鐘開箱：一鍵複製範本、授權初始化與發布網頁
+   * 邀請伴侶與室友加入白名單
+
+2. [02 日常記帳與生活分帳情境](./manuscript/02_daily-splitting.md)
+   * 手機端極速體驗：釘選至 iPhone / Android 主畫面
+   * 生活常見三大分帳情境（平分、比例分攤、代墊自用）
+   * 個人記帳 vs 共同分帳雙模式切換
+   * 1 秒快捷記帳按鈕與智能結算卡片
+   * 4 款精選色彩主題更換
+
+3. [03 出國旅遊與外幣帳本](./manuscript/03_travel-and-currencies.md)
+   * 出國免算匯率：主流外幣即時自動換算台幣
+   * 旅程專案標籤：將旅行花費獨立打包結算
+   * 雙軌記錄：外幣原價與台幣金額，回國輕鬆核對信用卡帳單
+   * 繁中／英語／日語三語系國際化支援
+
+4. [04 固定支出排程與月底報表分析](./manuscript/04_recurring-and-reports.md)
+   * 固定開銷自動化：每月房租、電信與訂閱服務定時自動入帳
+   * 月底圖表分析：分類佔比圓餅圖與年度消費趨勢線圖
+   * 月底一鍵結算清帳
+
+5. [05 舊帳遷移、備份與日常維護](./manuscript/05_migration-and-maintenance.md)
+   * 無痛轉移：SettleUp 與 AndroMoney 歷史數據匯入
+   * 資料完全掌控：隨時下載 Excel (.xlsx) / CSV 備份
+   * 想自己改功能？自訂調整指南（免寫程式自訂 vs 程式碼修改須知）
+   * 日常排錯常見問答 (FAQ)
+
+---
+
+### 第二部分：專業進階與工程解析篇（工程師與極客推薦）
+* [附錄 A：系統架構與設計原理](./manuscript/appendix-a-architecture.md)
+  * Serverless 無伺服器架構全景流程圖 (Mermaid)
+  * 試算表關聯式資料庫 20 欄標準架構模型
+  * 應用層安全白名單 (Application-Level ACL) 與 XSS 防護機制
+
+* [附錄 B：分帳核心演算法與原始碼解析](./manuscript/appendix-b-algorithms-and-code.md)
+  * 雙人淨餘額抵銷演算法數學推導 ($\sum(A - P)$)
+  * 外幣動態匯率引擎與離線備援字典原始碼
+  * 定時排程觸發器 (ScriptApp) 與操作安全日誌原始碼
+
+---
+
+## 🎨 視覺資產與截圖清單
+* 圖片清單與截圖指引：[book/assets/README.md](./assets/README.md)
