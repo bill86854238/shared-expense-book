@@ -15,7 +15,7 @@
 
 現在部署變得很簡單，只需 2 個步驟：
 
-1. **複製試算表**：[點我複製範本](https://docs.google.com/spreadsheets/d/您的試算表ID/copy) (請替換為您的 ID)
+1. **複製試算表**：[點我複製範本](https://docs.google.com/spreadsheets/d/1ZEXa0R0MGEMyG9W-Rh2t7bj1HCeM-gJ0chN7qqDw054/copy)
 2. **兩步初始化**：
    - 在試算表選單點擊「📊 記帳系統」->「1️⃣ 第一步：初始化系統」
    - 點擊「2️⃣ 第二步：開啟網頁版連結」，按照提示完成部署即可！
