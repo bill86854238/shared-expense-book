@@ -832,6 +832,113 @@
       color: #6b7280;
     }
 
+    /* ==================== 示範模式樣式 ==================== */
+    .demo-pill-btn {
+      padding: 6px 12px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(234, 88, 12, 0.12) 100%);
+      color: #b45309;
+      border: 1.5px solid #f59e0b;
+      border-radius: 20px;
+      font-size: 0.82em;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.25s ease;
+      user-select: none;
+    }
+
+    .demo-pill-btn:hover {
+      background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+
+    .demo-pill-btn.active {
+      background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+      color: white;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+    }
+
+    .demo-banner {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 1.5px solid #fcd34d;
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      animation: fadeIn 0.3s ease-out;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+    }
+
+    .demo-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .demo-badge {
+      background: #f59e0b;
+      color: white;
+      font-size: 0.75em;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .demo-desc {
+      font-size: 0.85em;
+      color: #92400e;
+      font-weight: 500;
+    }
+
+    .demo-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .demo-action-btn {
+      padding: 6px 12px;
+      background: white;
+      color: #b45309;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      font-size: 0.8em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .demo-action-btn:hover {
+      background: #fef3c7;
+      border-color: #f59e0b;
+      transform: translateY(-1px);
+    }
+
+    .demo-close-btn {
+      background: #ef4444;
+      color: white;
+      border-color: #ef4444;
+    }
+
+    .demo-close-btn:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: white;
+    }
+
     /* ==================== 響應式設計 (RWD) ==================== */
 
     /* 大螢幕 (桌機) - 1200px 以上 */
@@ -1201,7 +1308,8 @@
             </div>
           </div>
         </div>
-        <button onclick="openSettingsModal()" style="background: none; border: none; font-size: 1.3em; cursor: pointer; padding: 5px; opacity: 0.6; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="配色設定">⚙️</button>
+        <button onclick="openSettingsModal()" style="background: none; border: none; font-size: 1.3em; cursor: pointer; padding: 5px; opacity: 0.6; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="介面與風格設定">⚙️</button>
+        <button id="demoToggleBtn" onclick="toggleDemoMode()" class="demo-pill-btn" title="切換範例帳本">🎭 範例帳本</button>
       </div>
       <div id="userInfo" style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
         <div style="font-size: 0.9em; color: #999;">載入中...</div>
@@ -1748,6 +1856,17 @@
         要切換記帳模式請點擊上方標題
       </div>
 
+      <!-- 範例體驗模式 -->
+      <div style="margin-top: 15px; padding: 14px; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-weight: 600; font-size: 0.95em; color: #334155;">🎭 載入生活範例帳本</span>
+          <button id="modalDemoBtn" onclick="toggleDemoMode(); closeSettingsModal();" style="padding: 6px 14px; background: #6366f1; color: white; border: none; border-radius: 6px; font-size: 0.82em; cursor: pointer; font-weight: 600; transition: all 0.2s;">體驗範例</button>
+        </div>
+        <p style="font-size: 0.8em; color: #64748b; margin: 0; line-height: 1.4;">
+          載入生活範例帳目，方便預覽各項統計圖表與完整功能（不影響真實帳本）。
+        </p>
+      </div>
+
       <div style="display: flex; gap: 10px; margin-top: 20px;">
         <button class="btn" onclick="closeSettingsModal()" style="flex: 1; background: #e5e7eb; color: #374151;">取消</button>
         <button class="btn btn-primary" onclick="saveTheme()" style="flex: 1;">套用</button>
@@ -1769,6 +1888,396 @@
     let partnerName = '對方'; // 對方的名稱（從設定讀取）
     let categoriesData = {}; // 儲存分類資料結構 {主分類: [子分類...]}
     let appSettings = {mode: '共同記帳', theme: '紫色'}; // 應用程式設定
+
+    // ==================== 測試與展示模式模組 (Demo Mode) ====================
+    let isDemoMode = false;
+    let demoRandomSeed = 0;
+
+    /**
+     * 生成測試展示用的相對日期字串 (YYYY-MM-DD)
+     */
+    function getDemoRelativeDate(daysAgo, monthOffset = 0, specificDay = null) {
+      const now = new Date();
+      const d = new Date(now.getFullYear(), now.getMonth() + monthOffset, now.getDate());
+      if (specificDay !== null) {
+        d.setDate(specificDay);
+      } else {
+        d.setDate(d.getDate() - daysAgo);
+      }
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    /**
+     * 產生豐富精美的示範假資料（支援共同記帳與個人記帳雙模式）
+     */
+    function generateDemoExpenses(mode = '共同記帳', variance = 0) {
+      const isPersonal = (mode === '個人記帳');
+      const currentUserEmail = 'demo.user@gmail.com';
+      const list = [];
+
+      if (isPersonal) {
+        // --- 個人記帳示範資料 (包含收入與個人支出) ---
+        const incomes = [
+          { days: 2, item: '本月本業薪資入帳', amount: 68000, cat: '薪水' },
+          { days: 12, item: '季度專案績效獎金', amount: 15000, cat: '獎金' },
+          { days: 18, item: 'ETF 定期定額配息入帳', amount: 3600, cat: '投資收益' },
+          { days: 24, item: '二手攝影鏡頭出清', amount: 4200, cat: '副業收入' }
+        ];
+
+        incomes.forEach((inc, idx) => {
+          list.push({
+            date: getDemoRelativeDate(inc.days),
+            item: inc.item,
+            amount: inc.amount,
+            originalAmount: inc.amount,
+            currency: 'TWD',
+            exchangeRate: 1,
+            payer: '',
+            actualPayer: '',
+            yourPart: 0,
+            partnerPart: 0,
+            yourActualPaid: null,
+            partnerActualPaid: null,
+            category: inc.cat,
+            paymentAccount: '銀行轉帳',
+            project: '',
+            isRecurring: idx === 0,
+            recurringDay: idx === 0 ? 5 : '',
+            id: 'demo-inc-' + (idx + 1),
+            recordType: 'income',
+            recordOwner: currentUserEmail
+          });
+        });
+
+        const personalExpenses = [
+          { days: 0, item: '精品莊園手沖咖啡', amount: 160, cat: '飲食>早餐', acct: 'LINE Pay' },
+          { days: 0, item: '健康蔬食定食午餐', amount: 240, cat: '飲食>午餐', acct: '日常現金' },
+          { days: 1, item: '無印良品文具與筆記本', amount: 380, cat: '其他', acct: '國泰信用卡' },
+          { days: 2, item: '捷運都會定期票加值', amount: 1200, cat: '交通>捷運', acct: '日常現金' },
+          { days: 3, item: '誠品書店精選專業書籍', amount: 680, cat: '其他', acct: '國泰信用卡' },
+          { days: 4, item: '週末院線文藝電影票', amount: 330, cat: '娛樂>電影', acct: 'LINE Pay' },
+          { days: 5, item: '生鮮有機超市採買', amount: 890, cat: '飲食>晚餐', acct: '玉山富利卡' },
+          { days: 6, item: '健身房月度會員會費', amount: 1188, cat: '娛樂', acct: '國泰信用卡', recur: true, day: 1 },
+          { days: 8, item: '精品義式咖啡豆半磅', amount: 450, cat: '飲食>點心', acct: '日常現金' },
+          { days: 10, item: '雲端空間訂閱服務', amount: 150, cat: '其他', acct: '國泰信用卡', recur: true, day: 10 },
+          { days: 13, item: '個人手機通話與網路月租', amount: 599, cat: '居住>網路', acct: '國泰信用卡', recur: true, day: 15 },
+          { days: 15, item: '日式居酒屋與同事聚餐', amount: 1350, cat: '飲食>晚餐', acct: '國泰信用卡' },
+          { days: 19, item: '簡約棉質日常休閒襯衫', amount: 1290, cat: '服飾', acct: '國泰信用卡' },
+          { days: 22, item: '日用消耗品與居家收納', amount: 780, cat: '居住>家具', acct: '玉山富利卡' },
+          // 上月支出
+          { monthOffset: -1, specificDay: 5, item: '手沖咖啡與早午餐', amount: 320, cat: '飲食>早餐', acct: '日常現金' },
+          { monthOffset: -1, specificDay: 12, item: '生鮮食材每週補給', amount: 1450, cat: '飲食>午餐', acct: '玉山富利卡' },
+          { monthOffset: -1, specificDay: 18, item: '專業線上進修課程', amount: 2400, cat: '其他', acct: '國泰信用卡' },
+          { monthOffset: -1, specificDay: 25, item: '生活日常用品補給', amount: 980, cat: '居住', acct: 'LINE Pay' }
+        ];
+
+        personalExpenses.forEach((exp, idx) => {
+          const dateStr = exp.monthOffset !== undefined ? getDemoRelativeDate(0, exp.monthOffset, exp.specificDay) : getDemoRelativeDate(exp.days);
+          list.push({
+            date: dateStr,
+            item: exp.item,
+            amount: exp.amount,
+            originalAmount: exp.amount,
+            currency: 'TWD',
+            exchangeRate: 1,
+            payer: '你',
+            actualPayer: '你',
+            yourPart: exp.amount,
+            partnerPart: 0,
+            yourActualPaid: exp.amount,
+            partnerActualPaid: 0,
+            category: exp.cat,
+            paymentAccount: exp.acct,
+            project: '',
+            isRecurring: !!exp.recur,
+            recurringDay: exp.day || '',
+            id: 'demo-pers-' + (idx + 1),
+            recordType: 'personal',
+            recordOwner: currentUserEmail
+          });
+        });
+      } else {
+        // --- 共同記帳示範資料 ---
+        const sharedRows = [
+          // 本月數據
+          { days: 0, item: '週末手作早午餐食材', amount: 480, payer: '你', actual: '你', yp: 240, pp: 240, ya: 480, pa: 0, cat: '飲食>早餐', acct: '日常現金' },
+          { days: 0, item: '精品莊園手沖咖啡豆', amount: 650, payer: '你', actual: '你', yp: 325, pp: 325, ya: 650, pa: 0, cat: '飲食>點心', acct: 'LINE Pay' },
+          { days: 1, item: '日系超市生鮮與日常補給', amount: 2180, payer: '對方', actual: '對方', yp: 1090, pp: 1090, ya: 0, pa: 2180, cat: '飲食>晚餐', acct: '玉山富利卡' },
+          { days: 1, item: '天然豆腐貓砂兩箱', amount: 860, payer: '對方', actual: '對方', yp: 430, pp: 430, ya: 0, pa: 860, cat: '寵物', acct: 'LINE Pay' },
+          { days: 2, item: '米其林推薦日式定食', amount: 1280, payer: '兩人', actual: '不等額', yp: 640, pp: 640, ya: 800, pa: 480, cat: '飲食>午餐', acct: '國泰信用卡' },
+          { days: 3, item: '文藝院線雙人電影票', amount: 640, payer: '對方', actual: '對方', yp: 320, pp: 320, ya: 0, pa: 640, cat: '娛樂>電影', acct: 'LINE Pay' },
+          { days: 4, item: '週末自駕出遊加油', amount: 1250, payer: '你', actual: '你', yp: 625, pp: 625, ya: 1250, pa: 0, cat: '交通>加油', acct: '國泰信用卡' },
+          { days: 4, item: '市區立體停車場', amount: 150, payer: '你', actual: '你', yp: 75, pp: 75, ya: 150, pa: 0, cat: '交通>停車', acct: '日常現金' },
+          { days: 5, item: '貓咪無穀主食凍乾罐', amount: 1450, payer: '你', actual: '你', yp: 725, pp: 725, ya: 1450, pa: 0, cat: '寵物>飼料', acct: '國泰信用卡' },
+          { days: 6, item: '手作水果千層蛋糕與花茶', amount: 380, payer: '對方', actual: '對方', yp: 190, pp: 190, ya: 0, pa: 380, cat: '飲食>點心', acct: 'LINE Pay' },
+          { days: 8, item: '無印良品簡約收納整理盒', amount: 1350, payer: '你', actual: '你', yp: 675, pp: 675, ya: 1350, pa: 0, cat: '居住>家具', acct: '國泰信用卡' },
+          { days: 10, item: '居家光纖寬頻網路月租', amount: 699, payer: '你', actual: '你', yp: 349.5, pp: 349.5, ya: 699, pa: 0, cat: '居住>網路', acct: '國泰信用卡', recur: true, day: 10 },
+          { days: 12, item: '台電夏季電費', amount: 1680, payer: '你', actual: '你', yp: 840, pp: 840, ya: 1680, pa: 0, cat: '居住>水電', acct: '國泰信用卡' },
+          { days: 13, item: '天然氣瓦斯費', amount: 420, payer: '對方', actual: '對方', yp: 210, pp: 210, ya: 0, pa: 420, cat: '居住>水電', acct: 'LINE Pay' },
+          { days: 15, item: '影音串流家庭方案', amount: 390, payer: '對方', actual: '對方', yp: 195, pp: 195, ya: 0, pa: 390, cat: '娛樂>遊戲', acct: '國泰信用卡', recur: true, day: 15 },
+          { days: 16, item: '都會捷運悠遊卡加值', amount: 500, payer: '你', actual: '你', yp: 500, pp: 0, ya: 500, pa: 0, cat: '交通>捷運', acct: '日常現金' },
+          { days: 18, item: '雙人高鐵返鄉探親車票', amount: 2980, payer: '你', actual: '你', yp: 1490, pp: 1490, ya: 2980, pa: 0, cat: '交通', acct: '國泰信用卡' },
+          { days: 20, item: '雙人野餐露營帳篷裝備', amount: 2600, payer: '兩人', actual: '不等額', yp: 1560, pp: 1040, ya: 1560, pa: 1040, cat: '娛樂>旅遊', acct: '玉山富利卡' },
+          { days: 22, item: '客廳香氛精油擴香組', amount: 890, payer: '對方', actual: '對方', yp: 445, pp: 445, ya: 0, pa: 890, cat: '居住', acct: 'LINE Pay' },
+          { days: 25, item: '[💰結算] 對方還款結清', amount: 1500, payer: '對方', actual: '對方', yp: 0, pp: 0, ya: 0, pa: 1500, cat: '結算', acct: 'LINE Pay', type: 'settlement' },
+
+          // 上月數據 (-1)
+          { monthOffset: -1, specificDay: 3, item: '手作早午餐與咖啡', amount: 520, payer: '你', actual: '你', yp: 260, pp: 260, ya: 520, pa: 0, cat: '飲食>早餐', acct: '日常現金' },
+          { monthOffset: -1, specificDay: 7, item: '有機生鮮蔬果採買', amount: 1890, payer: '對方', actual: '對方', yp: 945, pp: 945, ya: 0, pa: 1890, cat: '飲食>午餐', acct: '玉山富利卡' },
+          { monthOffset: -1, specificDay: 10, item: '居家光纖網路月租', amount: 699, payer: '你', actual: '你', yp: 349.5, pp: 349.5, ya: 699, pa: 0, cat: '居住>網路', acct: '國泰信用卡', recur: true, day: 10 },
+          { monthOffset: -1, specificDay: 14, item: '夏季水電瓦斯費用', amount: 2150, payer: '你', actual: '你', yp: 1075, pp: 1075, ya: 2150, pa: 0, cat: '居住>水電', acct: '國泰信用卡' },
+          { monthOffset: -1, specificDay: 18, item: '週末文藝展覽雙人門票', amount: 600, payer: '你', actual: '你', yp: 300, pp: 300, ya: 600, pa: 0, cat: '娛樂', acct: '國泰信用卡' },
+          { monthOffset: -1, specificDay: 22, item: '貓咪例行健康檢查', amount: 1500, payer: '你', actual: '你', yp: 750, pp: 750, ya: 1500, pa: 0, cat: '寵物>看醫生', acct: '日常現金' },
+          { monthOffset: -1, specificDay: 26, item: '無印良品生活收納', amount: 1680, payer: '對方', actual: '對方', yp: 840, pp: 840, ya: 0, pa: 1680, cat: '居住>家具', acct: 'LINE Pay' },
+          // 歷史月份數據（展示近 6 個月趨勢圖表）
+          { monthOffset: -2, specificDay: 1, item: '家庭房租與大樓管理費', amount: 24000, payer: '你', actual: '你', yp: 12000, pp: 12000, ya: 24000, pa: 0, cat: '居住>家具', acct: '國泰信用卡' },
+          { monthOffset: -2, specificDay: 15, item: '暑期週末宜蘭出遊住宿', amount: 4800, payer: '兩人', actual: '不等額', yp: 2400, pp: 2400, ya: 2400, pa: 2400, cat: '娛樂>旅遊', acct: '玉山富利卡' },
+          { monthOffset: -3, specificDay: 1, item: '家庭房租與大樓管理費', amount: 24000, payer: '你', actual: '你', yp: 12000, pp: 12000, ya: 24000, pa: 0, cat: '居住>家具', acct: '國泰信用卡' },
+          { monthOffset: -3, specificDay: 18, item: '貓咪年度疫苗與健檢', amount: 2800, payer: '對方', actual: '對方', yp: 1400, pp: 1400, ya: 0, pa: 2800, cat: '寵物>看醫生', acct: 'LINE Pay' },
+          { monthOffset: -4, specificDay: 1, item: '家庭房租與大樓管理費', amount: 24000, payer: '你', actual: '你', yp: 12000, pp: 12000, ya: 24000, pa: 0, cat: '居住>家具', acct: '國泰信用卡' },
+          { monthOffset: -4, specificDay: 10, item: '母親節全家溫馨聚餐', amount: 4200, payer: '你', actual: '你', yp: 2100, pp: 2100, ya: 4200, pa: 0, cat: '飲食>晚餐', acct: '玉山富利卡' },
+          { monthOffset: -5, specificDay: 1, item: '家庭房租與大樓管理費', amount: 24000, payer: '你', actual: '你', yp: 12000, pp: 12000, ya: 24000, pa: 0, cat: '居住>家具', acct: '國泰信用卡' },
+          { monthOffset: -5, specificDay: 20, item: '春季生活用品與換季寢具', amount: 3500, payer: '對方', actual: '對方', yp: 1750, pp: 1750, ya: 0, pa: 3500, cat: '居住', acct: 'LINE Pay' }
+        ];
+
+        sharedRows.forEach((r, idx) => {
+          const dateStr = r.monthOffset !== undefined ? getDemoRelativeDate(0, r.monthOffset, r.specificDay) : getDemoRelativeDate(r.days);
+          list.push({
+            date: dateStr,
+            item: r.item,
+            amount: r.amount,
+            originalAmount: r.amount,
+            currency: 'TWD',
+            exchangeRate: 1,
+            payer: r.payer,
+            actualPayer: r.actual,
+            yourPart: r.yp,
+            partnerPart: r.pp,
+            yourActualPaid: r.ya,
+            partnerActualPaid: r.pa,
+            category: r.cat,
+            paymentAccount: r.acct,
+            project: '',
+            isRecurring: !!r.recur,
+            recurringDay: r.day || '',
+            id: 'demo-exp-' + (idx + 1),
+            recordType: r.type || 'expense',
+            recordOwner: currentUserEmail
+          });
+        });
+      }
+
+      // 排序（新到舊）
+      list.sort((a, b) => b.date.localeCompare(a.date));
+      return list;
+    }
+
+    /**
+     * 切換範例帳本 (開啟 / 關閉)
+     */
+    function toggleDemoMode(forceState) {
+      const targetState = (forceState !== undefined) ? !!forceState : !isDemoMode;
+      isDemoMode = targetState;
+
+      // 更新按鈕樣式與狀態
+      const demoBtn = document.getElementById('demoToggleBtn');
+      const modalDemoBtn = document.getElementById('modalDemoBtn');
+
+      if (demoBtn) {
+        demoBtn.classList.toggle('active', isDemoMode);
+        demoBtn.innerHTML = isDemoMode ? '🎭 範例帳本' : '🎭 範例帳本';
+      }
+
+      if (modalDemoBtn) {
+        modalDemoBtn.textContent = isDemoMode ? '還原真實帳本' : '體驗範例';
+        modalDemoBtn.style.background = isDemoMode ? '#64748b' : '#6366f1';
+      }
+
+      if (isDemoMode) {
+        sessionStorage.setItem('shared_expense_demo_mode', 'true');
+
+        // 設定示範使用者資訊
+        yourName = '小林';
+        partnerName = '小涵';
+        const demoUser = {
+          email: 'lin.demo@gmail.com',
+          name: '小林 (你)',
+          partnerName: '小涵 (對方)',
+          photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
+          allowed: true
+        };
+        displayUserInfo(demoUser);
+
+        // 載入生活範例資料
+        const demoData = generateDemoExpenses(appSettings.mode);
+        allExpenses = demoData;
+        displayedExpenses = demoData.slice(0, PAGE_SIZE);
+        totalCount = demoData.length;
+        hasMoreData = false;
+        allExpensesLoaded = true;
+
+        updateUI(displayedExpenses);
+        updateDashboard(allExpenses);
+
+        showToast('🎭 已載入生活範例帳本', 'success');
+      } else {
+        sessionStorage.removeItem('shared_expense_demo_mode');
+        showToast('已切換回真實帳本', 'success');
+        loadUserInfo();
+        loadData();
+      }
+    }
+
+    /**
+     * 重新產生隨機示範資料
+     */
+    function regenerateDemoData() {
+      if (!isDemoMode) {
+        toggleDemoMode(true);
+        return;
+      }
+      demoRandomSeed++;
+      const demoData = generateDemoExpenses(appSettings.mode, demoRandomSeed);
+      allExpenses = demoData;
+      displayedExpenses = demoData.slice(0, PAGE_SIZE);
+      totalCount = demoData.length;
+      allExpensesLoaded = true;
+
+      updateUI(displayedExpenses);
+      updateDashboard(allExpenses);
+
+      showToast('🎲 已重新產生一組精美示範資料！', 'success');
+    }
+
+    /**
+     * 離線 / 本地獨立執行 Mock Runner Polyfill
+     */
+    function setupMockRunnerIfNeeded() {
+      if (typeof window.google === 'undefined') {
+        window.google = {};
+      }
+      if (!window.google.script) {
+        window.google.script = {};
+      }
+
+      // 如果未在 Google Apps Script 環境中運行（例如本機直接以瀏覽器開啟 index.html）
+      if (!window.google.script.run) {
+        console.log('💡 偵測到本地獨立運行環境，自動啟用示範 Mock Runner');
+        
+        window.google.script.run = {
+          withSuccessHandler: function(onSuccess) {
+            this._successHandler = onSuccess;
+            return this;
+          },
+          withFailureHandler: function(onFailure) {
+            this._failureHandler = onFailure;
+            return this;
+          },
+          _call: function(fnName, result) {
+            const self = this;
+            setTimeout(function() {
+              if (self._successHandler) {
+                self._successHandler(result);
+              }
+            }, 50);
+          },
+          getCategories: function() {
+            this._call('getCategories', [
+              '飲食', '飲食>早餐', '飲食>午餐', '飲食>晚餐', '飲食>點心', '飲食>飲料',
+              '居住', '居住>水電', '居住>網路', '居住>家具',
+              '交通', '交通>捷運', '交通>公車', '交通>加油', '交通>停車',
+              '娛樂', '娛樂>電影', '娛樂>遊戲', '娛樂>旅遊',
+              '寵物', '寵物>飼料', '寵物>看醫生', '寵物>美容',
+              '服飾', '其他'
+            ]);
+          },
+          getPaymentAccounts: function() {
+            this._call('getPaymentAccounts', [
+              { name: '國泰信用卡', emoji: '💳' },
+              { name: 'LINE Pay', emoji: '📱' },
+              { name: '玉山富利卡', emoji: '💳' },
+              { name: '日常現金', emoji: '💵' },
+              { name: '悠遊卡', emoji: '🚇' }
+            ]);
+          },
+          getAppSettings: function() {
+            this._call('getAppSettings', { mode: '共同記帳', theme: '紫色' });
+          },
+          setAppSettings: function(mode, theme) {
+            this._call('setAppSettings', { success: true });
+          },
+          getCurrentUser: function() {
+            this._call('getCurrentUser', {
+              email: 'lin.demo@gmail.com',
+              name: '小林 (你)',
+              partnerName: '小涵 (對方)',
+              photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
+              allowed: true
+            });
+          },
+          getQuickExpenseButtons: function() {
+            this._call('getQuickExpenseButtons', [
+              { emoji: '🍳', item: '手作早餐', amount: 80, category: '飲食>早餐' },
+              { emoji: '☕', item: '手沖咖啡', amount: 120, category: '飲食>點心' },
+              { emoji: '🍱', item: '商業午餐', amount: 150, category: '飲食>午餐' },
+              { emoji: '🍽️', item: '溫馨晚餐', amount: 250, category: '飲食>晚餐' },
+              { emoji: '🚇', item: '交通加值', amount: 200, category: '交通>捷運' },
+              { emoji: '🐱', item: '貓咪零食', amount: 180, category: '寵物' }
+            ]);
+          },
+          getAllExpenses: function(mode) {
+            this._call('getAllExpenses', generateDemoExpenses(mode || '共同記帳'));
+          },
+          getExpenses: function(filters) {
+            const list = generateDemoExpenses(filters && filters.accountingMode || '共同記帳');
+            const offset = (filters && filters.offset) || 0;
+            const limit = (filters && filters.limit) || 50;
+            this._call('getExpenses', {
+              expenses: list.slice(offset, offset + limit),
+              total: list.length,
+              hasMore: (offset + limit) < list.length
+            });
+          },
+          addExpense: function() {
+            this._call('addExpense', 'demo-new-' + Date.now());
+          },
+          addExpenseFromWeb: function() {
+            this._call('addExpenseFromWeb', 'demo-new-' + Date.now());
+          },
+          addIncomeFromWeb: function() {
+            this._call('addIncomeFromWeb', 'demo-new-inc-' + Date.now());
+          },
+          addSettlement: function() {
+            this._call('addSettlement', { success: true });
+          },
+          getMembers: function() {
+            this._call('getMembers', [
+              { name: '小林 (你)', email: 'lin.demo@gmail.com', isOwner: true },
+              { name: '小涵 (對方)', email: 'han.demo@gmail.com', isOwner: false }
+            ]);
+          },
+          inviteMember: function(email) {
+            this._call('inviteMember', { success: true, message: '已模擬發送邀請給 ' + email });
+          },
+          removeMember: function(email) {
+            this._call('removeMember', { success: true, message: '已模擬移除成員 ' + email });
+          },
+          deleteExpenseById: function(id) {
+            this._call('deleteExpenseById', { success: true });
+          },
+          updateExpenseById: function(data) {
+            this._call('updateExpenseById', { success: true });
+          }
+        };
+
+        // 預設在本地獨立模式下啟用示範模式
+        isDemoMode = true;
+      }
+    }
+    setupMockRunnerIfNeeded();
 
     // ==================== 工具函數 ====================
 
@@ -2044,15 +2553,17 @@
       localStorage.setItem('accountingMode', mode);
       appSettings.mode = mode;
 
-      // 同步更新後端設定（Google Sheets）
-      google.script.run
-        .withSuccessHandler(function() {
-          console.log('後端設定已同步');
-        })
-        .withFailureHandler(function(error) {
-          console.error('同步後端設定失敗：', error);
-        })
-        .setAppSettings(mode, null);
+      if (!isDemoMode && window.google && window.google.script && window.google.script.run) {
+        // 同步更新後端設定（Google Sheets）
+        google.script.run
+          .withSuccessHandler(function() {
+            console.log('後端設定已同步');
+          })
+          .withFailureHandler(function(error) {
+            console.error('同步後端設定失敗：', error);
+          })
+          .setAppSettings(mode, null);
+      }
 
       // 套用新模式
       applyMode(mode);
@@ -2153,6 +2664,18 @@
       // 標記 allExpenses 尚未載入完成
       allExpensesLoaded = false;
 
+      if (isDemoMode) {
+        const demoData = generateDemoExpenses(appSettings.mode, demoRandomSeed);
+        allExpenses = demoData;
+        displayedExpenses = demoData.slice(0, PAGE_SIZE);
+        totalCount = demoData.length;
+        hasMoreData = false;
+        allExpensesLoaded = true;
+        updateDashboard(allExpenses);
+        updateUI(displayedExpenses);
+        return;
+      }
+
       // 載入第一頁資料（支出記錄頁面）
       loadPagedExpenses(0);
 
@@ -2212,6 +2735,17 @@
 
     // 載入使用者資訊
     function loadUserInfo() {
+      if (isDemoMode) {
+        displayUserInfo({
+          email: 'lin.demo@gmail.com',
+          name: '小林 (你)',
+          partnerName: '小涵 (對方)',
+          photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
+          allowed: true
+        });
+        return;
+      }
+
       google.script.run
         .withSuccessHandler(function(user) {
           displayUserInfo(user);
@@ -2608,7 +3142,9 @@
         '居住': '🏠',
         '交通': '🚗',
         '娛樂': '🎮',
+        '寵物': '🐱',
         '服飾': '👔',
+        '醫療': '🏥',
         '其他': '📦'
       };
 
@@ -2635,7 +3171,8 @@
             icon = '💰';
           } else {
             className = exp.payer === '你' ? 'you' : exp.payer === '對方' ? 'partner' : 'both';
-            icon = categoryIcons[exp.category] || '📦';
+            const mainCat = (exp.category || '').split('>')[0].trim();
+            icon = categoryIcons[mainCat] || categoryIcons[exp.category] || '📦';
           }
           const splitInfo = exp.payer === '兩人' ? '<br><small>(你: ' + formatMoney(Number(exp.yourPart)) + ' / 對方: ' + formatMoney(Number(exp.partnerPart)) + ')</small>' : '';
 
@@ -2926,6 +3463,16 @@
         return;
       }
 
+      if (isDemoMode) {
+        allExpenses = allExpenses.filter(e => String(e.id) !== String(id));
+        displayedExpenses = displayedExpenses.filter(e => String(e.id) !== String(id));
+        totalCount = allExpenses.length;
+        showToast('已刪除記錄（示範模式）', 'success');
+        updateUI(displayedExpenses);
+        updateDashboard(allExpenses);
+        return;
+      }
+
       google.script.run
         .withSuccessHandler(function() {
           showToast('刪除成功！', 'success');
@@ -3101,7 +3648,9 @@
         '居住': '🏠',
         '交通': '🚗',
         '娛樂': '🎮',
+        '寵物': '🐱',
         '服飾': '👔',
+        '醫療': '🏥',
         '其他': '📦'
       };
 
@@ -3110,8 +3659,9 @@
         const sortedCategories = Object.entries(categoryStats).sort((a, b) => b[1] - a[1]);
         categoryText = sortedCategories.slice(0, 3).map(function([cat, amount]) {
           const percentage = ((amount / total) * 100).toFixed(0);
-          const icon = categoryIcons[cat] || '📦';
-          return icon + cat + ' ' + percentage + '%';
+          const mainCat = (cat || '').split('>')[0].trim();
+          const icon = categoryIcons[mainCat] || categoryIcons[cat] || '📦';
+          return icon + ' ' + cat + ' ' + percentage + '%';
         }).join('<br>');
       } else {
         categoryText = '-';
@@ -3435,6 +3985,40 @@
         return;
       }
 
+      if (isDemoMode) {
+        const newRecord = {
+          date: incomeDate || getDemoRelativeDate(0),
+          item: item,
+          amount: amount,
+          originalAmount: amount,
+          currency: 'TWD',
+          exchangeRate: 1,
+          payer: '',
+          actualPayer: '',
+          yourPart: 0,
+          partnerPart: 0,
+          yourActualPaid: null,
+          partnerActualPaid: null,
+          category: category,
+          paymentAccount: '銀行轉帳',
+          project: '',
+          isRecurring: false,
+          recurringDay: '',
+          id: 'demo-inc-' + Date.now(),
+          recordType: 'income',
+          recordOwner: 'demo.user@gmail.com'
+        };
+        allExpenses.unshift(newRecord);
+        displayedExpenses.unshift(newRecord);
+        totalCount = allExpenses.length;
+        document.getElementById('item').value = '';
+        document.getElementById('amount').value = '';
+        showToast('✅ 收入記錄已新增！（示範模式）', 'success');
+        updateUI(displayedExpenses);
+        updateDashboard(allExpenses);
+        return;
+      }
+
       const incomeData = {
         item: item,
         amount: amount,
@@ -3457,7 +4041,7 @@
           document.getElementById('amount').value = '';
 
           // 重新載入資料
-          refreshData();
+          loadData();
 
           // 恢復按鈕
           submitBtn.disabled = false;
@@ -3651,6 +4235,61 @@
       // 取得日期和時間
       const expenseDate = document.getElementById('expenseDate').value;
       const expenseTime = document.getElementById('expenseTime').value;
+
+      if (isDemoMode) {
+        const newRecord = {
+          date: expenseDate || getDemoRelativeDate(0),
+          item: item,
+          amount: amount,
+          originalAmount: amount,
+          currency: 'TWD',
+          exchangeRate: 1,
+          payer: displayPayer,
+          actualPayer: actualPayerValue,
+          yourPart: yourPart,
+          partnerPart: partnerPart,
+          yourActualPaid: yourActualPaidAmount,
+          partnerActualPaid: partnerActualPaidAmount,
+          category: category,
+          paymentAccount: paymentAccount,
+          project: '',
+          isRecurring: isRecurring,
+          recurringDay: recurringDay,
+          id: 'demo-exp-' + Date.now(),
+          recordType: appSettings.mode === '個人記帳' ? 'personal' : 'expense',
+          recordOwner: 'demo.user@gmail.com'
+        };
+        allExpenses.unshift(newRecord);
+        displayedExpenses.unshift(newRecord);
+        totalCount = allExpenses.length;
+
+        // 清空表單
+        document.getElementById('item').value = '';
+        document.getElementById('amount').value = '';
+        document.getElementById('isRecurring').checked = false;
+        document.getElementById('recurringDay').value = '';
+        document.getElementById('recurringDayGroup').classList.add('hidden');
+
+        // 清空分帳欄位（如果存在）
+        const yourPartAmount = document.getElementById('yourPartAmount');
+        const partnerPartAmount = document.getElementById('partnerPartAmount');
+        const yourPartRatio = document.getElementById('yourPartRatio');
+        const partnerPartRatio = document.getElementById('partnerPartRatio');
+        const yourActualPaid = document.getElementById('yourActualPaid');
+        const partnerActualPaid = document.getElementById('partnerActualPaid');
+
+        if (yourPartAmount) yourPartAmount.value = '';
+        if (partnerPartAmount) partnerPartAmount.value = '';
+        if (yourPartRatio) yourPartRatio.value = '';
+        if (partnerPartRatio) partnerPartRatio.value = '';
+        if (yourActualPaid) yourActualPaid.value = '';
+        if (partnerActualPaid) partnerActualPaid.value = '';
+
+        showToast('✅ 記錄已新增！（示範模式）', 'success');
+        updateUI(displayedExpenses);
+        updateDashboard(allExpenses);
+        return;
+      }
 
       const expenseData = {
         item: item,
@@ -3852,13 +4491,19 @@
       const dailyStats = {};
 
       expenses.forEach(function(exp) {
+        // 跳過結算記錄
+        if (exp.recordType === 'settlement' || exp.category === '結算') {
+          return;
+        }
+
         const amount = Number(exp.amount);
 
-        // 分類統計
-        if (!categoryStats[exp.category]) {
-          categoryStats[exp.category] = 0;
+        // 主分類統計（將子分類如「飲食>早餐」彙總至「飲食」）
+        const mainCat = (exp.category && exp.category.includes('>')) ? exp.category.split('>')[0].trim() : (exp.category || '其他');
+        if (!categoryStats[mainCat]) {
+          categoryStats[mainCat] = 0;
         }
-        categoryStats[exp.category] += amount;
+        categoryStats[mainCat] += amount;
 
         // 付款人統計（合併兩人到各自）
         if (exp.payer === '你') {
@@ -3879,7 +4524,7 @@
         monthlyStats[monthKey] += amount;
 
         // 每日統計（最近 30 天）
-        const dayKey = exp.date;
+        const dayKey = exp.date.includes(' ') ? exp.date.split(' ')[0] : exp.date;
         if (!dailyStats[dayKey]) {
           dailyStats[dayKey] = 0;
         }
@@ -3932,12 +4577,15 @@
           '居住': '🏠',
           '交通': '🚗',
           '娛樂': '🎮',
+          '寵物': '🐱',
           '服飾': '👔',
+          '醫療': '🏥',
           '其他': '📦'
         };
 
         for (const [category, amount] of Object.entries(categoryStats)) {
-          const icon = categoryIcons[category] || '📦';
+          const mainCat = (category || '').split('>')[0].trim();
+          const icon = categoryIcons[mainCat] || categoryIcons[category] || '📦';
           pieData.addRow([icon + ' ' + category, amount]);
         }
 
@@ -3961,7 +4609,8 @@
 
         for (const [category, amount] of Object.entries(categoryStats)) {
           const percentage = (amount / maxAmount) * 100;
-          const icon = categoryIcons[category] || '📦';
+          const mainCat = (category || '').split('>')[0].trim();
+          const icon = categoryIcons[mainCat] || categoryIcons[category] || '📦';
           barHTML += '<div class="chart-bar">' +
             '<div class="chart-label">' + icon + ' ' + category + '</div>' +
             '<div class="chart-bar-bg">' +
@@ -4271,25 +4920,59 @@
 
       // 驗證
       if (!amount || amount <= 0) {
-        showNotification('請輸入有效金額', 'error');
+        showToast('請輸入有效金額', 'error');
         return;
       }
 
-      // 顯示載入狀態
       const button = event.target;
       button.disabled = true;
       button.textContent = '處理中...';
 
+      if (isDemoMode) {
+        const newRecord = {
+          date: date || getDemoRelativeDate(0),
+          item: (direction === 'partner_pay_me' ? '[💰結算] 對方還款' : '[💰結算] 我還款') + (note ? ' - ' + note : ''),
+          amount: amount,
+          originalAmount: amount,
+          currency: 'TWD',
+          exchangeRate: 1,
+          payer: direction === 'partner_pay_me' ? '對方' : '你',
+          actualPayer: direction === 'partner_pay_me' ? '對方' : '你',
+          yourPart: 0,
+          partnerPart: 0,
+          yourActualPaid: 0,
+          partnerActualPaid: 0,
+          category: '結算',
+          paymentAccount: 'LINE Pay',
+          project: '',
+          isRecurring: false,
+          recurringDay: '',
+          id: 'demo-settle-' + Date.now(),
+          recordType: 'settlement',
+          recordOwner: 'demo.user@gmail.com'
+        };
+        allExpenses.unshift(newRecord);
+        displayedExpenses.unshift(newRecord);
+        totalCount = allExpenses.length;
+        closeSettlementModal();
+        button.disabled = false;
+        button.textContent = '確認記錄';
+        showToast('結算記錄已新增！（示範模式）', 'success');
+        updateUI(displayedExpenses);
+        updateDashboard(allExpenses);
+        return;
+      }
+
       google.script.run
         .withSuccessHandler(function(result) {
-          showNotification('結算記錄已新增！', 'success');
+          showToast('結算記錄已新增！', 'success');
           closeSettlementModal();
           loadData();  // 重新載入資料
           button.disabled = false;
           button.textContent = '確認記錄';
         })
         .withFailureHandler(function(error) {
-          showNotification('新增失敗：' + error.message, 'error');
+          showToast('新增失敗：' + error.message, 'error');
           button.disabled = false;
           button.textContent = '確認記錄';
         })
@@ -4304,9 +4987,21 @@
     });
 
     window.onload = function() {
+      setupMockRunnerIfNeeded();
       loadAppSettings();  // 先載入設定（配色和模式）
-      loadData();
-      loadUserInfo();
+
+      // 檢查 URL 參數或快取是否有開啟示範模式
+      const urlParams = new URLSearchParams(window.location.search);
+      const demoParam = urlParams.get('demo') || urlParams.get('test');
+      const isSavedDemo = sessionStorage.getItem('shared_expense_demo_mode') === 'true';
+
+      if (demoParam === '1' || demoParam === 'true' || isSavedDemo || isDemoMode) {
+        toggleDemoMode(true);
+      } else {
+        loadData();
+        loadUserInfo();
+      }
+
       loadQuickExpenseButtons();
     };
   </script>

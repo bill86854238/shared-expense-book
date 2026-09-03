@@ -2161,6 +2161,8 @@ function onOpen() {
     .addSeparator()
     .addItem('📱 進入網頁版', 'openWebApp')
     .addItem('📈 查看快速統計', 'showStatistics')
+    .addItem('🎭 載入生活範例資料', 'menuInjectDemoData')
+    .addItem('🧹 清空支出記錄 (保留設定)', 'menuClearExpensesData')
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ 進階設定')
       .addItem('🔄 升級資料結構', 'upgradeToLatest')
@@ -3386,4 +3388,163 @@ function mapAndroMoneyCategory(category, subCategory) {
   };
 
   return categoryMap[androCategory] || category || '其他';
+}
+
+// ==================== 測試與展示假資料功能 ====================
+
+/**
+ * 選單觸發：載入生活範例資料
+ */
+function menuInjectDemoData() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    '🎭 載入生活範例資料',
+    '即將在「支出記錄」中建立 27 筆生活範例帳目（涵蓋本月、上月、多種分類與分帳方式）。\n\n此操作會覆寫現有的支出記錄，方便體驗與檢視各項圖表數據。\n\n是否確認建立？',
+    ui.ButtonSet.YES_NO
+  );
+  if (response !== ui.Button.YES) return;
+
+  const result = injectDemoData();
+  if (result.success) {
+    ui.alert(`✅ 生活範例資料載入成功！\n\n已成功建立 ${result.count} 筆支出與結算記錄。\n現在開啟網頁版即可查看豐富完整的圖表與各項數據！`);
+  } else {
+    ui.alert(`❌ 建立失敗：${result.message}`);
+  }
+}
+
+/**
+ * 選單觸發：清空支出記錄
+ */
+function menuClearExpensesData() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    '🧹 清空支出記錄',
+    '即將清空所有支出記錄資料（保留分類、設定與工作表結構）。\n\n是否確認清空？',
+    ui.ButtonSet.YES_NO
+  );
+  if (response !== ui.Button.YES) return;
+
+  const result = clearExpensesData();
+  if (result.success) {
+    ui.alert('✅ 已成功清空所有支出記錄。');
+  } else {
+    ui.alert(`❌ 清空失敗：${result.message}`);
+  }
+}
+
+/**
+ * 注入測試展示假資料核心函數（亦可供 Web 端呼叫）
+ */
+function injectDemoData() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+
+    if (!sheet) {
+      createExpensesSheet(ss);
+      sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+    }
+
+    const currentUser = Session.getActiveUser().getEmail();
+    const today = new Date();
+
+    // 建立相對日期的格式化函數
+    function getRelDate(daysAgo, monthOffset, specificDay) {
+      const d = new Date(today.getFullYear(), today.getMonth() + (monthOffset || 0), today.getDate());
+      if (specificDay !== undefined && specificDay !== null) {
+        d.setDate(specificDay);
+      } else if (daysAgo !== undefined && daysAgo !== null) {
+        d.setDate(d.getDate() - daysAgo);
+      }
+      return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    }
+
+    const demoRows = [
+      // --- 今日與本週熱門日常支出 ---
+      [getRelDate(0), '週末手作早午餐食材', 480, 480, 'TWD', 1, '你', '你', 240, 240, 480, 0, '飲食>早餐', '日常現金', '', false, '', 'demo-1', 'expense', currentUser],
+      [getRelDate(0), '精品莊園手沖咖啡豆', 650, 650, 'TWD', 1, '你', '你', 325, 325, 650, 0, '飲食>點心', 'LINE Pay', '', false, '', 'demo-2', 'expense', currentUser],
+      [getRelDate(1), '日系超市生鮮與日常補給', 2180, 2180, 'TWD', 1, '對方', '對方', 1090, 1090, 0, 2180, '飲食>晚餐', '玉山富利卡', '', false, '', 'demo-3', 'expense', currentUser],
+      [getRelDate(1), '天然豆腐貓砂兩箱', 860, 860, 'TWD', 1, '對方', '對方', 430, 430, 0, 860, '寵物', 'LINE Pay', '', false, '', 'demo-4', 'expense', currentUser],
+      [getRelDate(2), '米其林推薦日式定食', 1280, 1280, 'TWD', 1, '兩人', '不等額', 640, 640, 800, 480, '飲食>午餐', '國泰信用卡', '', false, '', 'demo-5', 'expense', currentUser],
+      [getRelDate(3), '文藝院線雙人電影票', 640, 640, 'TWD', 1, '對方', '對方', 320, 320, 0, 640, '娛樂>電影', 'LINE Pay', '', false, '', 'demo-6', 'expense', currentUser],
+      [getRelDate(4), '週末自駕出遊加油', 1250, 1250, 'TWD', 1, '你', '你', 625, 625, 1250, 0, '交通>加油', '國泰信用卡', '', false, '', 'demo-7', 'expense', currentUser],
+      [getRelDate(4), '市區立體停車場', 150, 150, 'TWD', 1, '你', '你', 75, 75, 150, 0, '交通>停車', '日常現金', '', false, '', 'demo-8', 'expense', currentUser],
+      [getRelDate(5), '貓咪無穀主食凍乾罐', 1450, 1450, 'TWD', 1, '你', '你', 725, 725, 1450, 0, '寵物>飼料', '國泰信用卡', '', false, '', 'demo-9', 'expense', currentUser],
+      [getRelDate(6), '手作水果千層蛋糕與花茶', 380, 380, 'TWD', 1, '對方', '對方', 190, 190, 0, 380, '飲食>點心', 'LINE Pay', '', false, '', 'demo-10', 'expense', currentUser],
+
+      // --- 本月中旬、居家水電與固定週期支出 ---
+      [getRelDate(8), '無印良品簡約生活收納盒', 1350, 1350, 'TWD', 1, '你', '你', 675, 675, 1350, 0, '居住>家具', '國泰信用卡', '', false, '', 'demo-11', 'expense', currentUser],
+      [getRelDate(10), '居家光纖寬頻網路月租', 699, 699, 'TWD', 1, '你', '你', 349.5, 349.5, 699, 0, '居住>網路', '國泰信用卡', true, 10, 'demo-12', 'expense', currentUser],
+      [getRelDate(12), '台電夏季電費', 1680, 1680, 'TWD', 1, '你', '你', 840, 840, 1680, 0, '居住>水電', '國泰信用卡', false, '', 'demo-13', 'expense', currentUser],
+      [getRelDate(13), '天然氣瓦斯費', 420, 420, 'TWD', 1, '對方', '對方', 210, 210, 0, 420, '居住>水電', 'LINE Pay', false, '', 'demo-14', 'expense', currentUser],
+      [getRelDate(15), '影音串流家庭方案', 390, 390, 'TWD', 1, '對方', '對方', 195, 195, 0, 390, '娛樂>遊戲', '國泰信用卡', true, 15, 'demo-15', 'expense', currentUser],
+      [getRelDate(16), '都會捷運悠遊卡加值', 500, 500, 'TWD', 1, '你', '你', 500, 0, 500, 0, '交通>捷運', '日常現金', false, '', 'demo-16', 'expense', currentUser],
+      [getRelDate(18), '雙人高鐵返鄉探親車票', 2980, 2980, 'TWD', 1, '你', '你', 1490, 1490, 2980, 0, '交通', '國泰信用卡', false, '', 'demo-17', 'expense', currentUser],
+      [getRelDate(20), '雙人野餐露營帳篷裝備', 2600, 2600, 'TWD', 1, '兩人', '不等額', 1560, 1040, 1560, 1040, '娛樂>旅遊', '玉山富利卡', false, '', 'demo-18', 'expense', currentUser],
+      [getRelDate(22), '客廳香氛精油擴香組', 890, 890, 'TWD', 1, '對方', '對方', 445, 445, 0, 890, '居住', 'LINE Pay', false, '', 'demo-19', 'expense', currentUser],
+      [getRelDate(25), '[💰結算] 對方還款結清', 1500, 1500, 'TWD', 1, '對方', '對方', 0, 0, 0, 1500, '結算', 'LINE Pay', false, '', 'demo-20', 'settlement', currentUser],
+
+      // --- 上月數據 (確保月度比較與趨勢圖表飽滿精緻) ---
+      [getRelDate(null, -1, 3), '手作早午餐與咖啡', 520, 520, 'TWD', 1, '你', '你', 260, 260, 520, 0, '飲食>早餐', '日常現金', false, '', 'demo-21', 'expense', currentUser],
+      [getRelDate(null, -1, 7), '有機生鮮蔬果採買', 1890, 1890, 'TWD', 1, '對方', '對方', 945, 945, 0, 1890, '飲食>午餐', '玉山富利卡', false, '', 'demo-22', 'expense', currentUser],
+      [getRelDate(null, -1, 10), '居家光纖網路月租', 699, 699, 'TWD', 1, '你', '你', 349.5, 349.5, 699, 0, '居住>網路', '國泰信用卡', true, 10, 'demo-23', 'expense', currentUser],
+      [getRelDate(null, -1, 14), '夏季水電瓦斯費用', 2150, 2150, 'TWD', 1, '你', '你', 1075, 1075, 2150, 0, '居住>水電', '國泰信用卡', false, '', 'demo-24', 'expense', currentUser],
+      [getRelDate(null, -1, 18), '週末文藝展覽雙人門票', 600, 600, 'TWD', 1, '你', '你', 300, 300, 600, 0, '娛樂', '國泰信用卡', false, '', 'demo-25', 'expense', currentUser],
+      [getRelDate(null, -1, 22), '貓咪例行健康檢查', 1500, 1500, 'TWD', 1, '你', '你', 750, 750, 1500, 0, '寵物>看醫生', '日常現金', false, '', 'demo-26', 'expense', currentUser],
+      [getRelDate(null, -1, 26), '無印良品生活收納', 1680, 1680, 'TWD', 1, '對方', '對方', 840, 840, 0, 1680, '居住>家具', 'LINE Pay', false, '', 'demo-27', 'expense', currentUser]
+    ];
+
+    // 清除現有支出資料列（保留標題）
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clear();
+    }
+
+    // 寫入示範資料
+    sheet.getRange(2, 1, demoRows.length, demoRows[0].length).setValues(demoRows);
+    sheet.getRange(2, 1, demoRows.length, demoRows[0].length).setHorizontalAlignment('center');
+
+    // 套用對應背景色
+    for (let i = 0; i < demoRows.length; i++) {
+      const rowNum = 2 + i;
+      const payer = demoRows[i][6];
+      const recType = demoRows[i][18];
+      let color = CONFIG.COLORS.BOTH;
+      if (recType === 'settlement') {
+        color = '#e0f2fe';
+      } else if (payer === '你') {
+        color = CONFIG.COLORS.YOUR;
+      } else if (payer === '對方') {
+        color = CONFIG.COLORS.PARTNER;
+      }
+      sheet.getRange(rowNum, 1, 1, demoRows[0].length).setBackground(color);
+    }
+
+    logAction('建立示範資料', `成功建立 ${demoRows.length} 筆示範記錄`);
+    return { success: true, count: demoRows.length };
+  } catch (e) {
+    Logger.log('建立示範假資料失敗: ' + e.toString());
+    return { success: false, message: e.toString() };
+  }
+}
+
+/**
+ * 清空支出記錄資料核心函數（保留工作表與標題）
+ */
+function clearExpensesData() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
+    if (!sheet) return { success: false, message: '找不到支出記錄工作表' };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clear();
+    }
+    logAction('清空支出記錄', '已清空所有支出記錄');
+    return { success: true };
+  } catch (e) {
+    Logger.log('清空支出記錄失敗: ' + e.toString());
+    return { success: false, message: e.toString() };
+  }
 }
