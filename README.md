@@ -7,7 +7,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-v8-blue.svg)](https://developers.google.com/apps-script)
-[![Version](https://img.shields.io/badge/Version-v2.60-blue.svg)](https://github.com/bill86854238/shared-expense-book/releases/tag/v2.60)
+[![Version](https://img.shields.io/badge/Version-v2.70-blue.svg)](https://github.com/bill86854238/shared-expense-book/releases/tag/v2.70)
 [![Security](https://img.shields.io/badge/Security-5%20Stars-brightgreen.svg)]()
 
 ---
@@ -76,6 +76,11 @@
   **A:** 可以，隨時可於試算表點選「檔案 → 下載」匯出為 Excel 或 CSV 檔案。
 
 > 更多詳細解答請見：[FAQ.md](./FAQ.md)
+
+## 📜 版本更新紀錄 (Release Notes)
+
+- **最新版本**：`v2.70` (2026-09) — 週期支出自動排程修復、手機端週期規則智慧同步、兩步驟部署引導優化、離線示範帳本模式。
+- 👉 完整歷史更新紀錄請參見：[CHANGELOG.md](./CHANGELOG.md)
 
 ---
 

@@ -51,3 +51,6 @@ promotion-article-*.md
 截圖指南.md
 部署指南-*.md
 Gumroad*.md
+
+# 編輯器暫存檔案
+.obsidian/

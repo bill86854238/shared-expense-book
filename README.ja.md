@@ -7,7 +7,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-v8-blue.svg)](https://developers.google.com/apps-script)
-[![Version](https://img.shields.io/badge/Version-v2.60-blue.svg)](https://github.com/bill86854238/shared-expense-book/releases/tag/v2.60)
+[![Version](https://img.shields.io/badge/Version-v2.70-blue.svg)](https://github.com/bill86854238/shared-expense-book/releases/tag/v2.70)
 [![Security](https://img.shields.io/badge/Security-5%20Stars-brightgreen.svg)]()
 
 ---

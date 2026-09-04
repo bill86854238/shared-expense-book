@@ -1,7 +1,19 @@
 /**
  * 情侶共同記帳系統 - Google Apps Script
- * 完整版本（簡化版）
- * v2.56 - 移除多幣別功能，固定使用 TWD，保持簡單
+ *
+ * 【版本資訊】
+ * 最新版本：v2.70 (2026-09-04)
+ * 完整歷史更新紀錄請參閱根目錄：CHANGELOG.md
+ *
+ * 【版本歷程摘要】
+ * v2.70 (2026-09) - 週期支出排程修復、手機端週期規則智慧同步、兩步驟部署引導優化、離線展示帳本模式
+ * v2.63 (2025-11) - 核心架構最佳化、XSS 全方位防護升級、強化成員白名單驗證
+ * v2.60 (2025-10) - 大幅簡化部署流程（免手動啟用 People API，兩步驟直覺開通）
+ * v2.56 (2025-10) - 移除多幣別功能與冗餘欄位，全系統固定使用 TWD，架構回歸輕量直覺
+ * v2.29 (2025-10) - 個人記帳模式新增獨立收入記錄與統計功能
+ * v2.28 (2025-10) - 修復前後端記帳模式不同步問題
+ * v2.21 (2025-10) - 正式實作「個人記帳／共同記帳」雙模式無縫切換系統、4款配色主題
+ * v2.00 (2025-10) - Google 試算表自託管共同記帳系統核心初始版正式發布
  */
 
 // ==================== 設定區 ====================
@@ -27,7 +39,7 @@ function initializeSpreadsheet() {
   const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // 檢查是否已有支出記錄工作表
+  // 檢查是否已有支出記錄工作表 
   const expensesSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.EXPENSES);
 
   if (expensesSheet) {
@@ -57,7 +69,7 @@ function initializeSpreadsheet() {
   createPaymentAccountsSheet_(ss);
   setupTriggers();
 
-  ui.alert('✅ 初始化成功！\n\n系統已完成以下設定：\n1. 建立所有工作表並填入範例資料\n2. 自動授權當前使用者 (' + Session.getActiveUser().getEmail() + ')\n3. 設定每日自動執行週期事件\n\n現在請點擊「2️⃣ 第二步：開啟網頁版連結」來完成部署！');
+  ui.alert('✅ 第一步：初始化成功！\n\n系統已完成以下設定：\n1. 建立所有工作表並填入範例資料\n2. 自動授權當前使用者 (' + Session.getActiveUser().getEmail() + ')\n3. 設定每日自動定時排程\n\n💡 下一步：請點選選單「2️⃣ 第二步：部署教學」或依指示前往最上方選單列【擴充功能 → Apps Script】完成發布！');
 }
 
 function createExpensesSheet(ss) {
@@ -425,7 +437,7 @@ function getPaymentAccounts() {
   }
 }
 
-function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid, expenseDate, expenseTime, paymentAccount) {
+function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, category, isRecurring, recurringDay, yourActualPaid, partnerActualPaid, expenseDate, expenseTime, paymentAccount, syncToRecurring = true) {
   // 檢查頻率限制
   checkRateLimit('addExpense');
 
@@ -549,6 +561,71 @@ function addExpense(item, amount, payer, actualPayer, yourPart, partnerPart, cat
 
   sheet.getRange(lastRow, 1, 1, 20).setBackground(color);
 
+  // 若為週期支出且由前端新增，同步新增或更新至「週期設定」工作表
+  const isRec = (isRecurring === true || isRecurring === 'true' || isRecurring === 'TRUE');
+  const recDay = parseInt(recurringDay, 10);
+  if (syncToRecurring && isRec && !isNaN(recDay) && recDay >= 1 && recDay <= 31) {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      let recurringSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.RECURRING);
+      if (!recurringSheet) {
+        // 容錯機制：尋找名稱相似的工作表（例如「週期記錄」、「週期支出」）
+        const sheets = ss.getSheets();
+        for (let s of sheets) {
+          const sName = s.getName().trim();
+          if (sName === '週期設定' || sName === '週期記錄' || sName === '週期支出') {
+            recurringSheet = s;
+            break;
+          }
+        }
+      }
+      if (!recurringSheet) {
+        createRecurringSheet(ss);
+        recurringSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.RECURRING);
+      }
+
+      if (recurringSheet) {
+        const recData = recurringSheet.getDataRange().getValues();
+        let targetRowIndex = -1;
+
+        // 檢查是否已有相同項目與扣款日的規則（從第 2 列開始，排除標題）
+        for (let r = 1; r < recData.length; r++) {
+          if (String(recData[r][1]).trim() === safeItem && Number(recData[r][7]) === recDay) {
+            targetRowIndex = r + 1; // 轉為 1-indexed 列號
+            break;
+          }
+        }
+
+        const newRecurringValues = [
+          true,
+          safeItem,
+          twdAmount,
+          payer,
+          yourPart,
+          partnerPart,
+          safeCategory,
+          recDay,
+          targetRowIndex > -1 ? '手機網頁版更新於 ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MM/dd HH:mm') : '來自手機網頁版新增'
+        ];
+
+        if (targetRowIndex > -1) {
+          // 已存在相同規則：更新該列內容，不再靜默忽略
+          recurringSheet.getRange(targetRowIndex, 1, 1, 9).setValues([newRecurringValues]);
+          recurringSheet.getRange(targetRowIndex, 1, 1, 9).setHorizontalAlignment('center');
+          Logger.log(`已成功更新週期規則（第 ${targetRowIndex} 列）：${safeItem}`);
+        } else {
+          // 不存在：新增一列
+          recurringSheet.appendRow(newRecurringValues);
+          const recLastRow = recurringSheet.getLastRow();
+          recurringSheet.getRange(recLastRow, 1, 1, 9).setHorizontalAlignment('center');
+          Logger.log(`已成功新增週期規則：${safeItem}`);
+        }
+      }
+    } catch (recErr) {
+      Logger.log('寫入週期設定工作表失敗: ' + recErr.toString());
+    }
+  }
+
   // 記錄日誌
   logAction('新增支出', `項目: ${safeItem}, 金額: ${amount}, 付款人: ${payer}`);
 
@@ -662,8 +739,30 @@ function executeRecurringExpenses() {
   for (let i = 1; i < data.length; i++) {
     const [enabled, item, amount, payer, yourPart, partnerPart, category, executeDay, note] = data[i];
 
-    if (enabled === true && executeDay === currentDay) {
-      addExpense(item, amount, payer, yourPart, partnerPart, category, true, executeDay);
+    if (enabled === true && Number(executeDay) === currentDay) {
+      const numAmount = parseFloat(amount) || 0;
+      const numYourPart = parseFloat(yourPart) || 0;
+      const numPartnerPart = parseFloat(partnerPart) || 0;
+      const yourPaid = (payer === '你') ? numAmount : (payer === '各自' ? numYourPart : 0);
+      const partnerPaid = (payer === '對方') ? numAmount : (payer === '各自' ? numPartnerPart : 0);
+
+      addExpense(
+        String(item || '週期支出'),
+        numAmount,
+        payer,
+        payer, // actualPayer
+        numYourPart,
+        numPartnerPart,
+        category,
+        true, // isRecurring
+        Number(executeDay), // recurringDay
+        yourPaid,
+        partnerPaid,
+        null, // expenseDate
+        null, // expenseTime
+        '週期自動扣款', // paymentAccount
+        false // syncToRecurring: 排程扣款無需回寫週期設定
+      );
       Logger.log(`已自動新增週期支出：${item} - ${amount}`);
     }
   }
@@ -1210,8 +1309,7 @@ function addExpenseFromWeb(expenseData) {
     expenseData.partnerActualPaid || null,  // 對方實際付出的金額
     expenseData.expenseDate || null,  // 支出日期
     expenseData.expenseTime || null,  // 支出時間
-    expenseData.currency || null,  // 幣別
-    expenseData.originalAmount || null  // 原始金額
+    expenseData.paymentAccount || ''  // 付款帳戶
   );
 }
 
@@ -2156,10 +2254,10 @@ function resetSystem() {
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('📊 記帳系統')
-    .addItem('1️⃣ 第一步：初始化系統 (必點)', 'initializeSpreadsheet')
-    .addItem('2️⃣ 第二步：開啟網頁版連結', 'openWebApp')
+    .addItem('1️⃣ 第一步：初始化系統 (首次設定)', 'initializeSpreadsheet')
+    .addItem('2️⃣ 第二步：部署教學 (點上方選單「擴充功能」)', 'showDeploymentGuide')
+    .addItem('3️⃣ 第三步：取得手機網頁連結', 'openWebApp')
     .addSeparator()
-    .addItem('📱 進入網頁版', 'openWebApp')
     .addItem('📈 查看快速統計', 'showStatistics')
     .addItem('🎭 載入生活範例資料', 'menuInjectDemoData')
     .addItem('🧹 清空支出記錄 (保留設定)', 'menuClearExpensesData')
@@ -2174,37 +2272,48 @@ function onOpen() {
     .addToUi();
 }
 
+/**
+ * 顯示第二步：發布手機網頁教學導引
+ */
+function showDeploymentGuide() {
+  const html = HtmlService.createHtmlOutput(
+    `<div style="font-family: sans-serif; line-height: 1.6; padding: 5px;">
+      <h3 style="color: #4f46e5; margin-top: 0;">🚀 第二步：發布手機網頁教學</h3>
+      <p style="color: #666; font-size: 0.9em;">Google 規定網頁應用程式必須至 Apps Script 後台發布：</p>
+      <ol style="padding-left: 20px; font-size: 0.95em;">
+        <li>請看試算表<strong>最上方選單列</strong>（在「工具」與「說明」之間），點選<strong>「擴充功能」→「Apps Script」</strong></li>
+        <li>在開啟的編輯器視窗，點選右上角藍色按鈕<strong>「部署」→「新部署」</strong></li>
+        <li>種類點選齒輪選擇<strong>「網頁應用程式」</strong></li>
+        <li>設定<strong>執行身分：我</strong>、<strong>存取權限：所有人</strong></li>
+        <li>點擊<strong>「部署」</strong>並完成 Google 帳號授權</li>
+      </ol>
+      <p style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 8px 12px; font-size: 0.9em; color: #166534;">
+        💡 部署成功後，隨時點選試算表選單<strong>「3️⃣ 第三步：取得手機網頁連結」</strong>即可複製網址！
+      </p>
+    </div>`
+  ).setWidth(500).setHeight(340);
+  SpreadsheetApp.getUi().showModalDialog(html, '部署教學');
+}
+
 function openWebApp() {
   const url = ScriptApp.getService().getUrl();
 
   // 檢查是否已部署
   if (!url || url.indexOf('/dev') !== -1) {
-    const html = HtmlService.createHtmlOutput(
-      `<div style="font-family: sans-serif; line-height: 1.6;">
-        <p style="color: #d93025; font-weight: bold;">⚠️ 尚未完成部署</p>
-        <p>請按照以下步驟啟用網頁版：</p>
-        <ol>
-          <li>點擊右上角藍色按鈕<strong>「部署」</strong></li>
-          <li>選擇<strong>「新部署」</strong></li>
-          <li>類型選擇<strong>「網頁應用程式」</strong></li>
-          <li>將「具有存取權限的人」設為<strong>「所有人」</strong></li>
-          <li>點擊「部署」並完成授權</li>
-        </ol>
-        <p>部署成功後，再次點選此選單即可取得連結。</p>
-      </div>`
-    ).setWidth(450).setHeight(300);
-    SpreadsheetApp.getUi().showModalDialog(html, '🚀 部署導引');
+    showDeploymentGuide();
     return;
   }
 
   const safeUrl = escapeHtml(url);
   const html = HtmlService.createHtmlOutput(
-    `<p>複製以下連結在瀏覽器開啟：</p>
-     <input type="text" value="${safeUrl}" style="width:100%;padding:10px;" onclick="this.select()">
-     <p><small>點擊輸入框即可選取全部文字</small></p>`
-  ).setWidth(500).setHeight(150);
+    `<div style="font-family: sans-serif; line-height: 1.6; padding: 5px;">
+      <p>📱 您的手機專屬網址已就緒，請複製以下連結在手機瀏覽器開啟：</p>
+      <input type="text" value="${safeUrl}" style="width:100%;padding:10px;font-size:14px;border:1px solid #ddd;border-radius:4px;" onclick="this.select()">
+      <p style="color: #666; font-size: 0.85em; margin-top: 8px;">💡 點擊上方輸入框即可自動全選網址。</p>
+    </div>`
+  ).setWidth(500).setHeight(160);
 
-  SpreadsheetApp.getUi().showModalDialog(html, '網頁版連結');
+  SpreadsheetApp.getUi().showModalDialog(html, '📱 手機網頁版連結');
 }
 
 function showStatistics() {
