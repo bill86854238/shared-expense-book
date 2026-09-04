@@ -43,6 +43,8 @@ PRODUCT-PACKAGE-README.txt
 *.sed
 *.ps1
 archive/
+build_epub.bat
+output/
 *-temp.html
 *-backup.html
 *-translated.html
